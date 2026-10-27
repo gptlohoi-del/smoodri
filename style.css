@@ -693,17 +693,33 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px 
 .app-container { justify-content: flex-start; gap: 8px; }
 .score-card { padding: 3px 5px; }
 .instant-score { color: var(--subtext); font-size: 10px; font-weight: 700; white-space: nowrap; }
-.main-panel { justify-content: center; align-items: stretch; gap: 5px; padding: 8px; }
-.cup-wrapper { flex: 0 1 auto; justify-content: center; height: clamp(100px, 25dvh, 180px); min-height: 90px; max-height: 180px; }
+.main-panel {
+  justify-content: flex-start;
+  align-items: stretch;
+  gap: 5px;
+  padding: 8px;
+}
+.cup-wrapper {
+  flex: 0 0 auto;
+  justify-content: flex-start;
+  align-items: flex-start;
+  height: clamp(100px, 25dvh, 180px);
+  min-height: 90px;
+  max-height: 180px;
+}
 .cup-circle { max-width: 176px; max-height: 176px; }
-.bars-container { gap: 4px; margin: 0; }
+.bars-container {
+  gap: 4px;
+  margin: 0;
+  margin-top: auto;
+}
 .bar-item { border-left: 3px solid var(--metric-accent); border-radius: 7px; padding: 4px 6px; background: var(--metric-bg); }
 .bar-item[data-metric="xoc"] { --metric-accent: #e05b37; --metric-bg: rgba(224, 91, 55, 0.08); }
 .bar-item[data-metric="phanh"] { --metric-accent: #dc2626; --metric-bg: rgba(220, 38, 38, 0.065); }
 .bar-item[data-metric="cua"] { --metric-accent: #0284c7; --metric-bg: rgba(2, 132, 199, 0.08); }
 .bar-item[data-metric="ga"] { --metric-accent: #059669; --metric-bg: rgba(5, 150, 105, 0.07); }
 .bar-item .bar-header span:first-child { color: var(--metric-accent); }
-.bar-track { height: 18px; }
+.bar-track { height: 38px; }
 .bar-mark-lvl1 { left: 65%; }
 .bar-mark-lvl2 { left: 85%; }
 .donuts-container { grid-template-columns: repeat(var(--metric-columns, 4), minmax(0, 1fr)); width: 100%; }
