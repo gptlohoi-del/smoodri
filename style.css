@@ -787,3 +787,17 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px 
 /* Popup phải cuộn nội dung thay vì co các mục khiến chúng đè lên nhau. */
 .modal-box > *, .advanced-inner > * { flex-shrink: 0; }
 .cup-readout { white-space: nowrap; font-size: 14px; }
+
+/* Tốc độ đặt giữa cốc G và 4 thanh; giữ one-view */
+.speed-panel { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:0; margin:0 auto; width:100%; flex:0 1 auto; gap:0; line-height:1.04; }
+.speed-panel.is-hidden { display:none; }
+.speed-number-row { display:flex; align-items:baseline; justify-content:center; gap:7px; white-space:nowrap; }
+#speedValue { font-size:min(var(--speed-font-size,64px), 15dvh); font-weight:var(--speed-font-weight,700); color:var(--speed-font-color,#009c73); font-variant-numeric:tabular-nums; letter-spacing:-.035em; }
+.speed-unit { font-size:15px; font-weight:700; color:var(--subtext); }
+.gps-status { font-size:12px; font-weight:700; color:var(--subtext); text-align:center; white-space:nowrap; }
+.gps-status.gps-warning { color:var(--red); }
+.gps-status.gps-estimate { color:#c47b12; }
+.setting-group select { background:var(--btn-bg); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:7px; font-size:14px; }
+.setting-group input[type=color] { width:54px; height:36px; padding:2px; border-radius:8px; border:1px solid var(--border); background:var(--btn-bg); }
+@media(max-height:670px){#speedValue{font-size:min(var(--speed-font-size,64px), 12dvh)} .gps-status{font-size:11px}}
+@media(max-height:530px){#speedValue{font-size:min(var(--speed-font-size,64px), 10dvh)} .speed-panel{gap:0}}

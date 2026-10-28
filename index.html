@@ -60,6 +60,11 @@
         </div>
       </div>
 
+      <div id="speedPanel" class="speed-panel" aria-live="off" aria-label="Tốc độ GPS tham khảo">
+        <div class="speed-number-row"><span id="speedValue">--</span><span class="speed-unit">km/h</span></div>
+        <div id="gpsStatus" class="gps-status">GPS --</div>
+      </div>
+
       <!-- HIỂN THỊ KIỂU 1: BIỂU ĐỒ 4 THANH NGANG (BAR CHART) -->
       <div id="barsView" class="bars-container">
         <div class="bar-item" data-metric="xoc">
@@ -235,7 +240,21 @@
       <button class="btn-option" id="btnTestBeepHigh" type="button">▶ Nghe thử 4 tiếng bíp nhanh</button>
       <button class="btn-option" id="btnTestPothole" type="button">💥 Nghe thử âm báo ổ gà</button>
 
-      <div class="section-divider">4. Giao diện</div>
+      <div class="section-divider">4. Tốc độ GPS</div>
+      <div class="setting-group">
+        <label class="toggle-line"><span>Hiện tốc độ dưới cốc G</span><input id="chkSpeedVisible" type="checkbox" checked /></label>
+        <div class="setting-label"><label for="rngSpeedSize">Cỡ số tốc độ</label><strong id="lblSpeedSize">64px</strong></div>
+        <input id="rngSpeedSize" type="range" min="32" max="100" step="2" value="64" />
+        <div class="setting-label"><label for="selSpeedWeight">Độ đậm số</label>
+          <select id="selSpeedWeight"><option value="500">Vừa</option><option value="600">Đậm vừa</option><option value="700" selected>Đậm</option><option value="800">Rất đậm</option></select>
+        </div>
+        <div class="setting-label"><label for="inpSpeedColor">Màu số tốc độ</label><input id="inpSpeedColor" type="color" value="#009c73" /></div>
+        <div class="setting-label"><label for="rngGpsFallback">Ước tính khi mất GPS tối đa</label><strong id="lblGpsFallback">2 giây</strong></div>
+        <input id="rngGpsFallback" type="range" min="0" max="3" step="0.5" value="2" />
+        <div class="setting-hint">GPS ±?m là độ chính xác vị trí; Hz là nhịp nhận vị trí thực tế. Khi mất GPS, tốc độ ước tính có thể sai; không dùng để quyết định tốc độ lái xe.</div>
+      </div>
+
+      <div class="section-divider">5. Giao diện</div>
       <div class="setting-group">
         <div class="setting-label"><span>Chế độ màu sắc</span><span id="lblThemeName">Sáng</span></div>
         <div class="option-grid-2">

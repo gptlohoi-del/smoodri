@@ -1,5 +1,5 @@
 // SmooDri Offline — mỗi bản phát hành có cache riêng.
-const CACHE_NAME = 'smoodri-offline-v8';
+const CACHE_NAME = 'smoodri-offline-v9-gps';
 const PREFIX = 'smoodri-offline-';
 const CORE = [
   './', './index.html', './style.css', './app.js', './manifest.json',

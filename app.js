@@ -23,7 +23,8 @@ const DEFAULTS = {
   waveType: 'square', potholeWave: 'sawtooth',
   startDelay: 1.5, scoreRecovery: 3,
   peakHoldTime: 1.5, alertHoldTime: 3,
-  theme: 'light', chartType: 'bar'
+  theme: 'light', chartType: 'bar',
+  speedVisible: true, speedFontSize: 64, speedColor: '#009c73', speedWeight: 700, gpsFallbackSeconds: 2
 };
 
 function thresholdsFor(level) {
@@ -60,6 +61,11 @@ function loadConfig() {
   cfg.customThresholds = migrated
     ? THRESHOLD_KEYS.some((k) => Math.abs(cfg[k] - thresholdsFor(cfg.comfortLevel)[k]) > 0.012)
     : Boolean(raw.customThresholds);
+  cfg.speedVisible = raw.speedVisible !== false;
+  cfg.speedFontSize = clamp(finite(raw.speedFontSize, 64), 32, 100);
+  cfg.speedWeight = [500,600,700,800].includes(Number(raw.speedWeight)) ? Number(raw.speedWeight) : 700;
+  cfg.speedColor = /^#[0-9a-fA-F]{6}$/.test(raw.speedColor) ? raw.speedColor : '#009c73';
+  cfg.gpsFallbackSeconds = clamp(finite(raw.gpsFallbackSeconds, 2), 0, 3);
   cfg.theme = raw.theme === 'dark' ? 'dark' : 'light';
   cfg.chartType = raw.chartType === 'donut' ? 'donut' : 'bar';
   cfg.waveType = WAVE_NAMES[raw.waveType] ? raw.waveType : 'square';
@@ -78,6 +84,99 @@ let config = loadConfig();
 function saveConfig() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(config)); }
   catch (_) { /* Trình duyệt có thể chặn lưu trữ; ứng dụng vẫn đo được. */ }
+}
+
+/* GPS: chỉ đo khi phiên đo hoạt động. Không dùng tốc độ giả khi dữ liệu quá cũ. */
+let gpsWatchId = null;
+let gpsLast = null;
+let gpsPrevious = null;
+let gpsLastReceived = 0;
+let gpsSmoothed = null;
+let gpsSensorAccel = 0;
+let gpsTicker = null;
+let gpsLastError = '';
+function speedSettings() {
+  $('speedPanel').classList.toggle('is-hidden', !config.speedVisible);
+  $('speedPanel').style.setProperty('--speed-font-size', `${config.speedFontSize}px`);
+  $('speedPanel').style.setProperty('--speed-font-weight', String(config.speedWeight));
+  $('speedPanel').style.setProperty('--speed-font-color', config.speedColor);
+  $('chkSpeedVisible').checked = config.speedVisible;
+  $('rngSpeedSize').value = config.speedFontSize;
+  $('lblSpeedSize').textContent = `${config.speedFontSize}px`;
+  $('selSpeedWeight').value = String(config.speedWeight);
+  $('inpSpeedColor').value = config.speedColor;
+  $('rngGpsFallback').value = config.gpsFallbackSeconds;
+  $('lblGpsFallback').textContent = `${config.gpsFallbackSeconds} giây`;
+}
+function gpsMotionSample(e) {
+  // Gia tốc đo theo trục điện thoại; chỉ dùng để ước lượng biến thiên ngắn hạn.
+  // Không thể xác định chắc chắn chiều tăng/giảm tốc nếu không biết hướng máy.
+  const a=e.acceleration;
+  if (!a || ![a.x,a.y,a.z].some(Number.isFinite)) return;
+  const mag=Math.hypot(Number(a.x)||0,Number(a.y)||0,Number(a.z)||0);
+  gpsSensorAccel = gpsSensorAccel * .85 + Math.min(2.5,mag) * .15;
+}
+function gpsSuccess(position) {
+  if (!isRunning) return;
+  const t=performance.now();
+  const c=position.coords;
+  const speed=Number.isFinite(c.speed) && c.speed>=0 ? c.speed*3.6 : null;
+  const sample={speed,accuracy:Number.isFinite(c.accuracy)?c.accuracy:null,time:t,lat:c.latitude,lon:c.longitude};
+  // Khi hệ điều hành không cung cấp speed, dùng khoảng cách giữa 2 tọa độ hợp lệ.
+  if(sample.speed===null && gpsLast && t-gpsLast.time>=600 && t-gpsLast.time<=5000 && c.accuracy<=30 && gpsLast.accuracy<=30){
+    const r=Math.PI/180,dl=(sample.lon-gpsLast.lon)*r,dp=(sample.lat-gpsLast.lat)*r;
+    const q=Math.sin(dp/2)**2+Math.cos(gpsLast.lat*r)*Math.cos(sample.lat*r)*Math.sin(dl/2)**2;
+    const meters=6371000*2*Math.atan2(Math.sqrt(q),Math.sqrt(Math.max(0,1-q)));
+    sample.speed=meters/((t-gpsLast.time)/1000)*3.6;
+  }
+  if(sample.speed!==null && sample.speed<=250 && sample.accuracy!==null && sample.accuracy<=100){
+    gpsSmoothed=gpsSmoothed===null?sample.speed:gpsSmoothed*.65+sample.speed*.35;
+  }
+  gpsPrevious=gpsLast;gpsLast=sample;gpsLastReceived=t;gpsLastError='';
+  renderGpsSpeed();
+}
+function gpsFailure(err) {
+  gpsLastError=err && err.code===1?'GPS CHƯA ĐƯỢC CẤP QUYỀN':'GPS KHÔNG CÓ TÍN HIỆU';
+  renderGpsSpeed();
+}
+function renderGpsSpeed() {
+  const speedEl=$('speedValue'), status=$('gpsStatus');
+  if(!isRunning){speedEl.textContent='--';status.textContent='GPS --';status.className='gps-status';return;}
+  const elapsed=gpsLastReceived?(performance.now()-gpsLastReceived)/1000:Infinity;
+  const hz=gpsLast&&gpsPrevious&&gpsLast.time>gpsPrevious.time ? 1000/(gpsLast.time-gpsPrevious.time):null;
+  const accuracy=gpsLast&&Number.isFinite(gpsLast.accuracy)?Math.round(gpsLast.accuracy):null;
+  if(elapsed<=2.5 && gpsSmoothed!==null){
+    speedEl.textContent=String(Math.round(gpsSmoothed));
+    status.textContent=`GPS ${accuracy!==null?'±'+accuracy+'m':'--'} ${hz!==null?hz.toFixed(1)+'Hz':'--Hz'}`;
+    status.className='gps-status'+(accuracy>30?' gps-warning':'');
+  }else if(gpsSmoothed!==null && elapsed<=2.5+config.gpsFallbackSeconds){
+    // Giới hạn trôi: gia tốc đo theo trục không đủ xác định chiều chuyển động.
+    // Chỉ ngoại suy rất ngắn theo xu hướng tốc độ GPS trước đó, được giới hạn
+    // bởi biên độ gia tốc thiết bị. Hiển thị rõ đây là giá trị ước tính.
+    let slope=0;
+    if(gpsLast&&gpsPrevious&&gpsLast.speed!==null&&gpsPrevious.speed!==null){
+      const dt=(gpsLast.time-gpsPrevious.time)/1000;
+      if(dt>.3) slope=clamp((gpsLast.speed-gpsPrevious.speed)/dt,-gpsSensorAccel*3.6,gpsSensorAccel*3.6);
+    }
+    const estimate=clamp(gpsSmoothed+slope*Math.min(elapsed-2.5,config.gpsFallbackSeconds),0,250);
+    speedEl.textContent=String(Math.round(estimate));
+    status.textContent='ƯỚC TÍNH · GPS MẤT';status.className='gps-status gps-estimate';
+  }else{
+    speedEl.textContent='--';status.textContent=gpsLastError||'GPS MẤT';status.className='gps-status gps-warning';
+  }
+}
+function startGps() {
+  stopGps(); gpsLast=null;gpsPrevious=null;gpsSmoothed=null;gpsSensorAccel=0;gpsLastReceived=0;gpsLastError='';
+  window.addEventListener('devicemotion',gpsMotionSample);
+  if(!navigator.geolocation){gpsLastError='GPS KHÔNG HỖ TRỢ';renderGpsSpeed();return;}
+  try {gpsWatchId=navigator.geolocation.watchPosition(gpsSuccess,gpsFailure,{enableHighAccuracy:true,maximumAge:0,timeout:10000});}
+  catch(_){gpsLastError='GPS KHÔNG KHỞI ĐỘNG';}
+  gpsTicker=setInterval(renderGpsSpeed,400);renderGpsSpeed();
+}
+function stopGps() {
+  if(gpsWatchId!==null&&navigator.geolocation){navigator.geolocation.clearWatch(gpsWatchId);gpsWatchId=null;}
+  if(gpsTicker!==null){clearInterval(gpsTicker);gpsTicker=null;}
+  window.removeEventListener('devicemotion',gpsMotionSample);
 }
 
 /* Giao diện và cài đặt */
@@ -300,6 +399,7 @@ function stopApp(title = 'ĐÃ DỪNG', subtitle = 'Bấm Bắt đầu để đo
   clearTimeout(countdownTimer); countdownTimer = null;
   clearInterval(watchdogTimer); watchdogTimer = null;
   window.removeEventListener('devicemotion', handleMotion);
+  stopGps(); renderGpsSpeed();
   if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
   $('btnStart').classList.remove('running');
   $('btnStart').innerHTML = '<span>▶ BẮT ĐẦU</span>';
@@ -328,6 +428,7 @@ async function startApp() {
   $('btnStart').innerHTML = '<span>⏹ DỪNG</span>';
   setBanner('ĐANG CÂN CHỈNH...', `Giữ điện thoại cố định ${config.startDelay.toFixed(1)} giây`, 'warn-70');
   window.addEventListener('devicemotion', handleMotion);
+  startGps();
   requestWakeLock();
   countdownTimer = setTimeout(() => {
     if (!isRunning || generation !== sessionGeneration) return;
@@ -544,6 +645,11 @@ function evaluateAndRender(gx, glon, gvert, weaving, dt, now) {
 }
 
 /* Tất cả nút bấm/cài đặt */
+$('chkSpeedVisible').addEventListener('change', e=>{config.speedVisible=e.target.checked;speedSettings();saveConfig();});
+$('rngSpeedSize').addEventListener('input', e=>{config.speedFontSize=Number(e.target.value);speedSettings();saveConfig();});
+$('selSpeedWeight').addEventListener('change', e=>{config.speedWeight=Number(e.target.value);speedSettings();saveConfig();});
+$('inpSpeedColor').addEventListener('input', e=>{config.speedColor=e.target.value;speedSettings();saveConfig();});
+$('rngGpsFallback').addEventListener('input', e=>{config.gpsFallbackSeconds=Number(e.target.value);speedSettings();saveConfig();renderGpsSpeed();});
 $('btnStart').addEventListener('click', startApp);
 $('btnQuickCalib').addEventListener('click', quickCalibrate);
 $('btnComfortPlus').addEventListener('click', () => setComfortLevel(config.comfortLevel + 5));
@@ -612,6 +718,7 @@ function syncAllSettings() {
     $(id).value = config[key]; $(label).textContent = `${Number(config[key]).toFixed(decimals)}${suffix}`;
   }
   syncComfortUI();
+  speedSettings();
 }
 $('btnResetDefaults').addEventListener('click', () => {
   if (!window.confirm('Khôi phục tất cả cài đặt về mặc định? Điểm của chuyến đi đang chạy không bị xóa.')) return;
