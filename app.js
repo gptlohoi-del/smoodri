@@ -294,7 +294,7 @@ function tone(freq, ms, delayMs = 0, wave = config.waveType, volumeFactor = 1) {
   const gain = audioCtx.createGain();
   osc.type = wave;
   osc.frequency.setValueAtTime(freq, when);
-  const amplitude = clamp(config.volumePercent / 100, 0.1, 1) * 0.35 * volumeFactor;  // Điều chỉnh mức âm lượng của âm báo
+  const amplitude = clamp(config.volumePercent / 100, 0.1, 1) * 0.6 * volumeFactor;  // Điều chỉnh mức âm lượng của âm báo
   const end = when + ms / 1000;
   gain.gain.setValueAtTime(0.0001, when);
   gain.gain.linearRampToValueAtTime(amplitude, when + 0.008);
