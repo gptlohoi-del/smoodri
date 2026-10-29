@@ -71,7 +71,7 @@ function loadConfig() {
   cfg.waveType = WAVE_NAMES[raw.waveType] ? raw.waveType : 'square';
   cfg.potholeWave = POTHOLE_NAMES[raw.potholeWave] ? raw.potholeWave : 'sawtooth';
   cfg.soundEnabled = raw.soundEnabled !== false;
-  cfg.volumePercent = clamp(migrated ? finite(raw.volumeBoost, 2.8) * 25 : finite(raw.volumePercent, 70), 10, 100);
+  cfg.volumePercent = clamp(migrated ? finite(raw.volumeBoost, 2.8) * 25 : finite(raw.volumePercent, 70), 10, 200);
   cfg.startDelay = clamp(finite(raw.startDelay, 1.5), 1, 5);
   cfg.scoreRecovery = clamp(finite(raw.scoreRecovery, 3), 1, 20);
   cfg.peakHoldTime = clamp(finite(raw.peakHoldTime, 1.5), 0, 5);
