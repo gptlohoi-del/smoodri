@@ -7,9 +7,9 @@ const smoothFactor = (dt, tau) => 1 - Math.exp(-clamp(dt, 0, 0.3) / tau);
 const STORAGE_KEY = 'smoodri_cfg_v8';
 const GRAVITY = 9.80665;
 const BASE_THRESHOLDS = Object.freeze({
-  maxGa: 0.25, maxPhanh: 0.28, maxCua: 0.25,
-  potholeThreshold: 0.30, maxJerk: 0.30
-});
+  maxGa: 0.2, maxPhanh: 0.2, maxCua: 0.18,
+  potholeThreshold: 0.2, maxJerk: 0.2
+}); // điều chỉnh mức độ êm ái của xe MỨC ÊM ÁI
 const THRESHOLD_KEYS = Object.keys(BASE_THRESHOLDS);
 const METRICS = ['xoc', 'phanh', 'cua', 'ga'];
 const WAVE_NAMES = { square: 'Bíp rõ', triangle: 'Bíp dịu', sine: 'Bíp nhẹ' };
@@ -294,7 +294,7 @@ function tone(freq, ms, delayMs = 0, wave = config.waveType, volumeFactor = 1) {
   const gain = audioCtx.createGain();
   osc.type = wave;
   osc.frequency.setValueAtTime(freq, when);
-  const amplitude = clamp(config.volumePercent / 100, 0.1, 1) * 0.13 * volumeFactor;
+  const amplitude = clamp(config.volumePercent / 100, 0.1, 1) * 0.35 * volumeFactor;  // Điều chỉnh mức âm lượng của âm báo
   const end = when + ms / 1000;
   gain.gain.setValueAtTime(0.0001, when);
   gain.gain.linearRampToValueAtTime(amplitude, when + 0.008);
