@@ -14,6 +14,8 @@ const THRESHOLD_KEYS = Object.keys(BASE_THRESHOLDS);
 const METRICS = ['xoc', 'phanh', 'cua', 'ga'];
 const WAVE_NAMES = { square: 'Bíp rõ', triangle: 'Bíp dịu', sine: 'Bíp nhẹ' };
 const POTHOLE_NAMES = { sawtooth: 'Âm trầm', square: 'Âm mạnh', sine: 'Âm nhẹ' };
+const PIP_FIELDS = ['score','speed','ga','phanh','cua','xoc','gps'];
+const PIP_DEFAULT_VISIBLE = ['score','speed','ga','phanh','cua','xoc'];
 const DEFAULTS = {
   comfortLevel: 60, customThresholds: false,
   maxGa: 0.20, maxPhanh: 0.224, maxCua: 0.20,
@@ -24,7 +26,9 @@ const DEFAULTS = {
   startDelay: 1.5, scoreRecovery: 3,
   peakHoldTime: 1.5, alertHoldTime: 3,
   theme: 'light', chartType: 'bar',
-  speedVisible: true, speedFontSize: 64, speedColor: '#009c73', speedWeight: 700, gpsFallbackSeconds: 2
+  speedVisible: true, speedFontSize: 64, speedColor: '#009c73', speedWeight: 700, gpsFallbackSeconds: 2,
+  pipRatio: '16:9', pipFontSize: 23, pipFontWeight: 700,
+  pipBgColor: '#0d1a2d', pipTextColor: '#ffffff', pipVisible: [...PIP_DEFAULT_VISIBLE]
 };
 
 function thresholdsFor(level) {
@@ -66,6 +70,13 @@ function loadConfig() {
   cfg.speedWeight = [500,600,700,800].includes(Number(raw.speedWeight)) ? Number(raw.speedWeight) : 700;
   cfg.speedColor = /^#[0-9a-fA-F]{6}$/.test(raw.speedColor) ? raw.speedColor : '#009c73';
   cfg.gpsFallbackSeconds = clamp(finite(raw.gpsFallbackSeconds, 2), 0, 3);
+  cfg.pipRatio = ['16:9','4:3','1:1'].includes(raw.pipRatio) ? raw.pipRatio : DEFAULTS.pipRatio;
+  cfg.pipFontSize = clamp(Math.round(finite(raw.pipFontSize, DEFAULTS.pipFontSize)), 16, 32);
+  cfg.pipFontWeight = [500,600,700,800].includes(Number(raw.pipFontWeight)) ? Number(raw.pipFontWeight) : DEFAULTS.pipFontWeight;
+  cfg.pipBgColor = /^#[0-9a-fA-F]{6}$/.test(raw.pipBgColor) ? raw.pipBgColor : DEFAULTS.pipBgColor;
+  cfg.pipTextColor = /^#[0-9a-fA-F]{6}$/.test(raw.pipTextColor) ? raw.pipTextColor : DEFAULTS.pipTextColor;
+  const pipVisible = Array.isArray(raw.pipVisible) ? raw.pipVisible.filter(k=>PIP_FIELDS.includes(k)) : PIP_DEFAULT_VISIBLE;
+  cfg.pipVisible = pipVisible.length ? [...new Set(pipVisible)] : [...PIP_DEFAULT_VISIBLE];
   cfg.theme = raw.theme === 'dark' ? 'dark' : 'light';
   cfg.chartType = raw.chartType === 'donut' ? 'donut' : 'bar';
   cfg.waveType = WAVE_NAMES[raw.waveType] ? raw.waveType : 'square';
@@ -82,7 +93,8 @@ function loadConfig() {
 }
 let config = loadConfig();
 function saveConfig() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(config)); }
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+    window.dispatchEvent(new Event('smoodri:pip-config-changed')); }
   catch (_) { /* Trình duyệt có thể chặn lưu trữ; ứng dụng vẫn đo được. */ }
 }
 
@@ -133,6 +145,7 @@ function gpsSuccess(position) {
     gpsSmoothed=gpsSmoothed===null?sample.speed:gpsSmoothed*.65+sample.speed*.35;
   }
   gpsPrevious=gpsLast;gpsLast=sample;gpsLastReceived=t;gpsLastError='';
+  document.documentElement.dataset.smoodriLastGpsAt = String(Date.now());
   renderGpsSpeed();
 }
 function gpsFailure(err) {
@@ -271,6 +284,40 @@ function bindNumericSlider(id, labelId, cfgKey, suffix, decimals, custom = false
     }
     saveConfig();
   });
+}
+
+/* PiP settings: App Hub reads the saved config via its injected same-origin bridge. */
+function syncPipSettings() {
+  $('selPipRatio').value = config.pipRatio;
+  $('rngPipFontSize').value = String(config.pipFontSize);
+  $('lblPipFontSize').textContent = `${config.pipFontSize}px`;
+  $('selPipFontWeight').value = String(config.pipFontWeight);
+  $('inpPipBg').value = config.pipBgColor;
+  $('inpPipText').value = config.pipTextColor;
+  document.querySelectorAll('[data-pip-visible]').forEach(input=>{
+    input.checked = config.pipVisible.includes(input.dataset.pipVisible);
+  });
+  const preview=$('pipSettingsPreview');
+  preview.style.setProperty('--pip-bg',config.pipBgColor);
+  preview.style.setProperty('--pip-text',config.pipTextColor);
+  preview.style.setProperty('--pip-main',`${config.pipFontSize}px`);
+  preview.style.setProperty('--pip-weight',String(config.pipFontWeight));
+  preview.style.aspectRatio = config.pipRatio.replace(':',' / ');
+  preview.querySelectorAll('[data-preview]').forEach(node=>{
+    node.hidden = !config.pipVisible.includes(node.dataset.preview);
+  });
+}
+function bindPipSettings() {
+  $('selPipRatio').addEventListener('change',e=>{config.pipRatio=e.target.value;syncPipSettings();saveConfig();});
+  $('rngPipFontSize').addEventListener('input',e=>{config.pipFontSize=Number(e.target.value);syncPipSettings();saveConfig();});
+  $('selPipFontWeight').addEventListener('change',e=>{config.pipFontWeight=Number(e.target.value);syncPipSettings();saveConfig();});
+  $('inpPipBg').addEventListener('input',e=>{config.pipBgColor=e.target.value;syncPipSettings();saveConfig();});
+  $('inpPipText').addEventListener('input',e=>{config.pipTextColor=e.target.value;syncPipSettings();saveConfig();});
+  document.querySelectorAll('[data-pip-visible]').forEach(input=>input.addEventListener('change',()=>{
+    const chosen=PIP_FIELDS.filter(k=>document.querySelector(`[data-pip-visible="${k}"]`).checked);
+    if(chosen.length===0){ input.checked=true; return; }
+    config.pipVisible=chosen;syncPipSettings();saveConfig();
+  }));
 }
 
 /* Âm thanh: mức khởi phát cố định = 100%. Không vượt biên độ số. */
@@ -719,10 +766,11 @@ function syncAllSettings() {
   }
   syncComfortUI();
   speedSettings();
+  syncPipSettings();
 }
 $('btnResetDefaults').addEventListener('click', () => {
   if (!window.confirm('Khôi phục tất cả cài đặt về mặc định? Điểm của chuyến đi đang chạy không bị xóa.')) return;
-  config = { ...DEFAULTS, visibleMetrics: [...METRICS], ...thresholdsFor(DEFAULTS.comfortLevel) };
+  config = { ...DEFAULTS, visibleMetrics: [...METRICS], pipVisible: [...PIP_DEFAULT_VISIBLE], ...thresholdsFor(DEFAULTS.comfortLevel) };
   syncAllSettings();
   saveConfig();
 });
@@ -738,5 +786,6 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
 }
 bindSliders();
+bindPipSettings();
 syncAllSettings();
 $('slopeText').textContent = 'Độ dốc: chưa xác định';

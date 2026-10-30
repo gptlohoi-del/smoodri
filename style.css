@@ -801,3 +801,17 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px 
 .setting-group input[type=color] { width:54px; height:36px; padding:2px; border-radius:8px; border:1px solid var(--border); background:var(--btn-bg); }
 @media(max-height:670px){#speedValue{font-size:min(var(--speed-font-size,64px), 12dvh)} .gps-status{font-size:11px}}
 @media(max-height:530px){#speedValue{font-size:min(var(--speed-font-size,64px), 10dvh)} .speed-panel{gap:0}}
+
+/* PiP settings preview: scaled demonstration inside the settings dialog. */
+.pip-settings-preview { --pip-bg:#0d1a2d; --pip-text:#ffffff; --pip-main:23px;
+  color:var(--pip-text); background:var(--pip-bg); border-radius:12px; border:1px solid var(--border);
+  padding:12px; width:min(100%,310px); aspect-ratio:16/9; display:flex; flex-direction:column;
+  justify-content:space-between; gap:6px; overflow:hidden; margin:0 auto; }
+.pip-preview-head,.pip-preview-main {display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.pip-preview-head{font-size:12px;}.pip-preview-head span{font-size:10px;opacity:.76}
+.pip-preview-main{font-size:11px;}.pip-preview-main span{display:flex;flex-direction:column;gap:2px}
+.pip-preview-main b{font-size:var(--pip-main);line-height:1.1;font-weight:var(--pip-weight,700)}
+.pip-preview-metrics{display:flex;flex-wrap:wrap;gap:3px;font-size:10px}
+.pip-preview-metrics span{padding:4px 5px;border-radius:5px;background:rgba(128,128,128,.20)}
+.pip-preview-gps{font-size:10px;opacity:.84}
+.pip-settings-preview [hidden]{display:none!important}

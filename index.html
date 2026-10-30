@@ -270,6 +270,40 @@
         </div>
       </div>
 
+      <div class="section-divider">6. Cửa sổ PiP trong App Hub</div>
+      <div class="setting-group">
+        <div class="setting-hint">Chỉnh hình thức cửa sổ thu nhỏ khi mở SmooDri trong APK App Hub. Kích thước thực tế do Android quyết định. Web SmooDri dùng riêng không mở PiP native.</div>
+        <div class="setting-label"><label for="selPipRatio">Tỷ lệ cửa sổ</label>
+          <select id="selPipRatio"><option value="16:9">16:9 — Ngang</option><option value="4:3">4:3 — Cân đối</option><option value="1:1">1:1 — Vuông</option></select>
+        </div>
+        <div class="setting-label"><label for="rngPipFontSize">Cỡ chữ điểm chính</label><strong id="lblPipFontSize">23px</strong></div>
+        <input id="rngPipFontSize" type="range" min="16" max="32" step="1" value="23" />
+        <div class="setting-label"><label for="selPipFontWeight">Độ đậm chữ</label>
+          <select id="selPipFontWeight"><option value="500">Vừa</option><option value="600">Đậm vừa</option><option value="700" selected>Đậm</option><option value="800">Rất đậm</option></select>
+        </div>
+        <div class="setting-label"><label for="inpPipBg">Màu nền PiP</label><input id="inpPipBg" type="color" value="#0d1a2d" /></div>
+        <div class="setting-label"><label for="inpPipText">Màu chữ PiP</label><input id="inpPipText" type="color" value="#ffffff" /></div>
+        <div class="setting-label"><span>Thông tin xuất hiện trong PiP</span></div>
+        <div class="metric-choices" id="pipMetricChoices">
+          <label><input type="checkbox" data-pip-visible="score" checked /> Điểm êm ái (native)</label>
+          <label><input type="checkbox" data-pip-visible="speed" checked /> Tốc độ GPS (web)</label>
+          <label><input type="checkbox" data-pip-visible="ga" checked /> GA</label>
+          <label><input type="checkbox" data-pip-visible="phanh" checked /> PHANH</label>
+          <label><input type="checkbox" data-pip-visible="cua" checked /> VÀO CUA</label>
+          <label><input type="checkbox" data-pip-visible="xoc" checked /> Ổ GÀ</label>
+          <label><input type="checkbox" data-pip-visible="gps" /> GPS ±m / Hz</label>
+        </div>
+        <div id="pipSettingsPreview" class="pip-settings-preview" aria-label="Xem trước bố cục PiP">
+          <div class="pip-preview-head"><strong>🚘 SMOODRI</strong><span>ĐANG ĐO</span></div>
+          <div class="pip-preview-main"><span data-preview="score">Điểm <b>96</b></span><span data-preview="speed">Tốc độ <b>65 km/h</b></span></div>
+          <div class="pip-preview-metrics">
+            <span data-preview="ga">GA 18%</span><span data-preview="phanh">PHANH 25%</span><span data-preview="cua">CUA 42%</span><span data-preview="xoc">Ổ GÀ 12%</span>
+          </div>
+          <div class="pip-preview-gps" data-preview="gps">GPS ±5m · 1.0Hz</div>
+        </div>
+        <div class="setting-hint">Tốc độ trong PiP chỉ có số mới khi WebView tiếp tục nhận GPS. Nếu dữ liệu quá cũ sẽ hiện “--”, không giữ tốc độ cũ gây nhầm lẫn.</div>
+      </div>
+
       <details id="advancedSettings" class="advanced-settings">
         <summary>⚙️ Cài đặt nâng cao (không bắt buộc)</summary>
         <div class="advanced-inner">
