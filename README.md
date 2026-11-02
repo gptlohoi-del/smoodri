@@ -34,3 +34,7 @@
 - `manifest.json`: cài đặt PWA
 - `sw.js`: cache offline
 - `icons/`: icon PNG chuẩn và SVG nguồn
+
+## Cập nhật OTA tự động qua GitHub Pages
+
+Đã tích hợp workflow `Publish SmooDri Web OTA (Pages)` và mục cập nhật trong CÀI ĐẶT CHUNG. Xem [`HUONG_DAN_OTA_SMOODRI.md`](HUONG_DAN_OTA_SMOODRI.md) để bật GitHub Pages (Source: GitHub Actions), kiểm tra offline và phân biệt cập nhật web với APK native.

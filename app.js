@@ -5,6 +5,63 @@ const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 const finite = (v, fallback) => Number.isFinite(Number(v)) ? Number(v) : fallback;
 const smoothFactor = (dt, tau) => 1 - Math.exp(-clamp(dt, 0, 0.3) / tau);
 const STORAGE_KEY = 'smoodri_cfg_v8';
+
+/* BẢNG GIỚI HẠN TẬP TRUNG: có thể chỉnh trực tiếp trong CÀI ĐẶT NÂNG CAO.
+   safeMin/safeMax là rào bảo vệ riêng; không thay từ UI. */
+const NUMERIC_BASE = Object.freeze({
+  comfortLevel: {label:'Độ nhạy đánh giá',min:20,max:100,step:5,default:60,safeMin:20,safeMax:100},
+  volumePercent:{label:'Âm lượng cảnh báo',min:10,max:100,step:5,default:70,safeMin:0,safeMax:100},
+  speedFontSize:{label:'Cỡ chữ tốc độ',min:32,max:100,step:2,default:64,safeMin:12,safeMax:120},
+  gpsFallbackSeconds:{label:'Thời gian ước tính mất GPS (giây)',min:0,max:3,step:0.5,default:2,safeMin:0,safeMax:3},
+  pipFontSize:{label:'Cỡ chữ điểm trong PiP',min:16,max:32,step:1,default:23,safeMin:10,safeMax:48},
+  maxGa:{label:'Ngưỡng GA (G)',min:0.05,max:0.50,step:0.01,default:0.2,safeMin:0.05,safeMax:0.70},
+  maxPhanh:{label:'Ngưỡng PHANH (G)',min:0.05,max:0.55,step:0.01,default:0.224,safeMin:0.05,safeMax:0.70},
+  maxCua:{label:'Ngưỡng VÀO CUA (G)',min:0.05,max:0.50,step:0.01,default:0.2,safeMin:0.05,safeMax:0.70},
+  potholeThreshold:{label:'Ngưỡng Ổ GÀ (G)',min:0.08,max:0.65,step:0.01,default:0.24,safeMin:0.08,safeMax:0.70},
+  maxJerk:{label:'Ngưỡng LẠNG LÁCH (G/s)',min:0.08,max:0.70,step:0.01,default:0.24,safeMin:0.08,safeMax:0.70},
+  startDelay:{label:'Thời gian chuẩn bị (giây)',min:1,max:5,step:0.5,default:1.5,safeMin:0.5,safeMax:10},
+  scoreRecovery:{label:'Hồi phục điểm (đ/s)',min:1,max:20,step:1,default:3,safeMin:0.1,safeMax:30},
+  peakHoldTime:{label:'Giữ giá trị cao nhất (giây)',min:0,max:5,step:0.5,default:1.5,safeMin:0,safeMax:10},
+  alertHoldTime:{label:'Giữ cảnh báo (giây)',min:0.5,max:8,step:0.5,default:3,safeMin:0.1,safeMax:12},
+  scoreFontSize:{label:'Cỡ chữ điểm di chuyển (px)',min:22,max:60,step:1,default:32,safeMin:16,safeMax:78},
+  cupSize:{label:'Đường kính cốc G (px)',min:100,max:190,step:2,default:176,safeMin:70,safeMax:230},
+  barHeight:{label:'Chiều cao bốn thanh chỉ số (px)',min:10,max:44,step:1,default:38,safeMin:6,safeMax:54},
+  barFontSize:{label:'Cỡ chữ tên thanh (px)',min:10,max:18,step:0.5,default:12.5,safeMin:8,safeMax:24}
+});
+const NUMERIC_OVERRIDE_KEY='smoodri_numeric_limits_v1';
+const NUMERIC_RANGES=Object.fromEntries(Object.entries(NUMERIC_BASE).map(([key,v])=>[key,{...v}]));
+function rangeValid(key, candidate) {
+  const base=NUMERIC_BASE[key];
+  if(!base || !candidate) return false;
+  const {min,max,step,default:defaultValue}=candidate;
+  return [min,max,step,defaultValue].every(Number.isFinite) && min>=base.safeMin && max<=base.safeMax && min<max && step>0 && step<=max-min && defaultValue>=min && defaultValue<=max;
+}
+function loadNumericLimits() {
+  try {
+    const values=JSON.parse(localStorage.getItem(NUMERIC_OVERRIDE_KEY)||'{}');
+    for(const [key,value] of Object.entries(values)) {
+      const merged={...NUMERIC_RANGES[key],...value};
+      if(rangeValid(key,merged)) NUMERIC_RANGES[key]=merged;
+    }
+  }catch(_) { /* Giới hạn cũ không hợp lệ => dùng bản gốc. */ }
+}
+loadNumericLimits();
+function rangeRound(key, value) {
+  const r=NUMERIC_RANGES[key], n=Number(value);
+  if(!r) return n;
+  if(!Number.isFinite(n)) return r.default;
+  const bounded=clamp(n,r.min,r.max);
+  const out=clamp(r.min+Math.round((bounded-r.min)/r.step)*r.step,r.min,r.max);
+  return Number(out.toFixed(6));
+}
+function rangeStep(key,delta,current) { return rangeRound(key,Number(current)+delta*NUMERIC_RANGES[key].step); }
+function rangeDefaults() {return Object.fromEntries(Object.keys(NUMERIC_RANGES).map(key=>[key,NUMERIC_RANGES[key].default]));}
+const RANGE_IDS={
+  rngComfort:'comfortLevel',rngVolumeBoost:'volumePercent',rngSpeedSize:'speedFontSize',rngGpsFallback:'gpsFallbackSeconds',rngPipFontSize:'pipFontSize',
+  rngMaxGa:'maxGa',rngMaxPhanh:'maxPhanh',rngMaxCua:'maxCua',rngPotholeThreshold:'potholeThreshold',rngMaxJerk:'maxJerk',
+  rngStartDelay:'startDelay',rngScoreRecovery:'scoreRecovery',rngPeakHoldTime:'peakHoldTime',rngAlertHoldTime:'alertHoldTime'
+};
+
 const GRAVITY = 9.80665;
 const BASE_THRESHOLDS = Object.freeze({
   maxGa: 0.2, maxPhanh: 0.2, maxCua: 0.18,
@@ -28,7 +85,9 @@ const DEFAULTS = {
   theme: 'light', chartType: 'bar',
   speedVisible: true, speedFontSize: 64, speedColor: '#009c73', speedWeight: 700, gpsFallbackSeconds: 2,
   pipRatio: '16:9', pipFontSize: 23, pipFontWeight: 700,
-  pipBgColor: '#0d1a2d', pipTextColor: '#ffffff', pipVisible: [...PIP_DEFAULT_VISIBLE]
+  pipBgColor: '#0d1a2d', pipTextColor: '#ffffff', pipVisible: [...PIP_DEFAULT_VISIBLE],
+  scoreFontSize:32,scoreColor:'#059669',cupSize:176,cupAlign:'left',speedAlign:'left',barHeight:38,barFontSize:12.5,
+  colorXoc:'#e05b37',colorPhanh:'#dc2626',colorCua:'#0284c7',colorGa:'#059669'
 };
 
 function thresholdsFor(level) {
@@ -42,6 +101,14 @@ function thresholdsFor(level) {
     maxJerk: +Math.max(0.08, BASE_THRESHOLDS.maxJerk * ratio).toFixed(3)
   };
 }
+function boundedThresholds(level) {
+  const computed=thresholdsFor(level);
+  for(const key of THRESHOLD_KEYS){
+    const bounds=NUMERIC_RANGES[key];
+    computed[key]=clamp(computed[key],bounds.min,bounds.max); // Giữ chính xác 3 số lẻ khi tự tính; không ép vào STEP.
+  }
+  return computed;
+}
 function loadConfig() {
   let raw = null;
   let migrated = false;
@@ -52,26 +119,26 @@ function loadConfig() {
       migrated = Boolean(raw);
     }
   } catch (_) { raw = null; }
-  const cfg = { ...DEFAULTS, ...thresholdsFor(DEFAULTS.comfortLevel) };
+  const cfg = { ...DEFAULTS, ...rangeDefaults(), ...boundedThresholds(NUMERIC_RANGES.comfortLevel.default) };
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return cfg;
   const savedLevel = migrated
     ? (140 - finite(raw.masterScale, 80))
     : finite(raw.comfortLevel, DEFAULTS.comfortLevel);
-  cfg.comfortLevel = clamp(Math.round(savedLevel / 5) * 5, 20, 100);
-  Object.assign(cfg, thresholdsFor(cfg.comfortLevel));
+  cfg.comfortLevel = rangeRound('comfortLevel',savedLevel);
+  Object.assign(cfg, boundedThresholds(cfg.comfortLevel));
   THRESHOLD_KEYS.forEach((key) => {
-    if (raw[key] !== undefined) cfg[key] = clamp(finite(raw[key], cfg[key]), key === 'potholeThreshold' || key === 'maxJerk' ? 0.08 : 0.05, 0.70);
+    if (raw[key] !== undefined) cfg[key] = rangeRound(key,finite(raw[key],cfg[key]));
   });
   cfg.customThresholds = migrated
     ? THRESHOLD_KEYS.some((k) => Math.abs(cfg[k] - thresholdsFor(cfg.comfortLevel)[k]) > 0.012)
     : Boolean(raw.customThresholds);
   cfg.speedVisible = raw.speedVisible !== false;
-  cfg.speedFontSize = clamp(finite(raw.speedFontSize, 64), 32, 100);
+  cfg.speedFontSize = rangeRound('speedFontSize',finite(raw.speedFontSize,cfg.speedFontSize));
   cfg.speedWeight = [500,600,700,800].includes(Number(raw.speedWeight)) ? Number(raw.speedWeight) : 700;
   cfg.speedColor = /^#[0-9a-fA-F]{6}$/.test(raw.speedColor) ? raw.speedColor : '#009c73';
-  cfg.gpsFallbackSeconds = clamp(finite(raw.gpsFallbackSeconds, 2), 0, 3);
+  cfg.gpsFallbackSeconds = rangeRound('gpsFallbackSeconds',finite(raw.gpsFallbackSeconds,cfg.gpsFallbackSeconds));
   cfg.pipRatio = ['16:9','4:3','1:1'].includes(raw.pipRatio) ? raw.pipRatio : DEFAULTS.pipRatio;
-  cfg.pipFontSize = clamp(Math.round(finite(raw.pipFontSize, DEFAULTS.pipFontSize)), 16, 32);
+  cfg.pipFontSize = rangeRound('pipFontSize',finite(raw.pipFontSize,cfg.pipFontSize));
   cfg.pipFontWeight = [500,600,700,800].includes(Number(raw.pipFontWeight)) ? Number(raw.pipFontWeight) : DEFAULTS.pipFontWeight;
   cfg.pipBgColor = /^#[0-9a-fA-F]{6}$/.test(raw.pipBgColor) ? raw.pipBgColor : DEFAULTS.pipBgColor;
   cfg.pipTextColor = /^#[0-9a-fA-F]{6}$/.test(raw.pipTextColor) ? raw.pipTextColor : DEFAULTS.pipTextColor;
@@ -82,11 +149,20 @@ function loadConfig() {
   cfg.waveType = WAVE_NAMES[raw.waveType] ? raw.waveType : 'square';
   cfg.potholeWave = POTHOLE_NAMES[raw.potholeWave] ? raw.potholeWave : 'sawtooth';
   cfg.soundEnabled = raw.soundEnabled !== false;
-  cfg.volumePercent = clamp(migrated ? finite(raw.volumeBoost, 2.8) * 25 : finite(raw.volumePercent, 70), 10, 200);
-  cfg.startDelay = clamp(finite(raw.startDelay, 1.5), 1, 5);
-  cfg.scoreRecovery = clamp(finite(raw.scoreRecovery, 3), 1, 20);
-  cfg.peakHoldTime = clamp(finite(raw.peakHoldTime, 1.5), 0, 5);
-  cfg.alertHoldTime = clamp(finite(raw.alertHoldTime, 3), 0.5, 8);
+  cfg.volumePercent = rangeRound('volumePercent',migrated ? finite(raw.volumeBoost,2.8)*25 : finite(raw.volumePercent,cfg.volumePercent));
+  cfg.startDelay = rangeRound('startDelay',finite(raw.startDelay,cfg.startDelay));
+  cfg.scoreRecovery = rangeRound('scoreRecovery',finite(raw.scoreRecovery,cfg.scoreRecovery));
+  cfg.peakHoldTime = rangeRound('peakHoldTime',finite(raw.peakHoldTime,cfg.peakHoldTime));
+  cfg.alertHoldTime = rangeRound('alertHoldTime',finite(raw.alertHoldTime,cfg.alertHoldTime));
+  for(const key of ['scoreFontSize','cupSize','barHeight','barFontSize']) {
+    cfg[key]=rangeRound(key,finite(raw[key],cfg[key]));
+  }
+  for(const key of ['scoreColor','colorXoc','colorPhanh','colorCua','colorGa']) {
+    if(/^#[0-9a-fA-F]{6}$/.test(raw[key])) cfg[key]=raw[key];
+  }
+  if(['left','center','right'].includes(raw.cupAlign)) cfg.cupAlign=raw.cupAlign;
+  if(['left','center','right'].includes(raw.speedAlign)) cfg.speedAlign=raw.speedAlign;
+  if (!cfg.customThresholds) Object.assign(cfg,boundedThresholds(cfg.comfortLevel));
   const chosen = Array.isArray(raw.visibleMetrics) ? raw.visibleMetrics.filter((m) => METRICS.includes(m)) : METRICS;
   cfg.visibleMetrics = chosen.length ? [...new Set(chosen)] : [...METRICS];
   return cfg;
@@ -96,6 +172,19 @@ function saveConfig() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
     window.dispatchEvent(new Event('smoodri:pip-config-changed')); }
   catch (_) { /* Trình duyệt có thể chặn lưu trữ; ứng dụng vẫn đo được. */ }
+}
+
+/* Chỉ thay đổi phần hiển thị, không thay đổi mẫu cảm biến hoặc mức cảnh báo. */
+function applyUiAppearance() {
+  const root=document.documentElement;
+  root.style.setProperty('--score-font-size',config.scoreFontSize+'px');
+  root.style.setProperty('--score-font-color',config.scoreColor);
+  root.style.setProperty('--cup-size',config.cupSize+'px');
+  root.style.setProperty('--cup-align',({left:'flex-start',center:'center',right:'flex-end'})[config.cupAlign]||'flex-start');
+  root.style.setProperty('--speed-align',({left:'flex-start',center:'center',right:'flex-end'})[config.speedAlign]||'flex-start');
+  root.style.setProperty('--ui-bar-height',config.barHeight+'px');
+  root.style.setProperty('--ui-bar-font',config.barFontSize+'px');
+  for(const metric of ['Xoc','Phanh','Cua','Ga']) root.style.setProperty('--ui-color-'+metric.toLowerCase(),config['color'+metric]);
 }
 
 /* GPS: chỉ đo khi phiên đo hoạt động. Không dùng tốc độ giả khi dữ liệu quá cũ. */
@@ -112,6 +201,7 @@ function speedSettings() {
   $('speedPanel').style.setProperty('--speed-font-size', `${config.speedFontSize}px`);
   $('speedPanel').style.setProperty('--speed-font-weight', String(config.speedWeight));
   $('speedPanel').style.setProperty('--speed-font-color', config.speedColor);
+  $('speedPanel').style.alignItems = ({left:'flex-start',center:'center',right:'flex-end'})[config.speedAlign]||'flex-start';
   $('chkSpeedVisible').checked = config.speedVisible;
   $('rngSpeedSize').value = config.speedFontSize;
   $('lblSpeedSize').textContent = `${config.speedFontSize}px`;
@@ -260,13 +350,13 @@ function syncComfortUI() {
   $('lblComfort').textContent = `${level}/100`;
   $('rngComfort').value = String(level);
   $('comfortDescription').textContent = `${levelLabel(level)}. Nút + yêu cầu êm ái hơn, nút − linh hoạt hơn.`;
-  $('btnComfortMinus').disabled = level <= 20;
-  $('btnComfortPlus').disabled = level >= 100;
+  $('btnComfortMinus').disabled = level <= NUMERIC_RANGES.comfortLevel.min;
+  $('btnComfortPlus').disabled = level >= NUMERIC_RANGES.comfortLevel.max;
   syncThresholdSliders();
 }
 function setComfortLevel(level) {
-  config.comfortLevel = clamp(Math.round(finite(level, 60) / 5) * 5, 20, 100);
-  Object.assign(config, thresholdsFor(config.comfortLevel));
+  config.comfortLevel = rangeRound('comfortLevel',finite(level,NUMERIC_RANGES.comfortLevel.default));
+  Object.assign(config, boundedThresholds(config.comfortLevel));
   config.customThresholds = false;
   syncComfortUI();
   saveConfig();
@@ -276,7 +366,8 @@ function bindNumericSlider(id, labelId, cfgKey, suffix, decimals, custom = false
   el.value = config[cfgKey];
   $(labelId).textContent = `${Number(config[cfgKey]).toFixed(decimals)}${suffix}`;
   el.addEventListener('input', () => {
-    config[cfgKey] = Number(el.value);
+    config[cfgKey] = rangeRound(cfgKey,el.value);
+    el.value = config[cfgKey];
     $(labelId).textContent = `${Number(config[cfgKey]).toFixed(decimals)}${suffix}`;
     if (custom) {
       config.customThresholds = true;
@@ -699,8 +790,8 @@ $('inpSpeedColor').addEventListener('input', e=>{config.speedColor=e.target.valu
 $('rngGpsFallback').addEventListener('input', e=>{config.gpsFallbackSeconds=Number(e.target.value);speedSettings();saveConfig();renderGpsSpeed();});
 $('btnStart').addEventListener('click', startApp);
 $('btnQuickCalib').addEventListener('click', quickCalibrate);
-$('btnComfortPlus').addEventListener('click', () => setComfortLevel(config.comfortLevel + 5));
-$('btnComfortMinus').addEventListener('click', () => setComfortLevel(config.comfortLevel - 5));
+$('btnComfortPlus').addEventListener('click', () => setComfortLevel(rangeStep('comfortLevel',1,config.comfortLevel)));
+$('btnComfortMinus').addEventListener('click', () => setComfortLevel(rangeStep('comfortLevel',-1,config.comfortLevel)));
 $('rngComfort').addEventListener('input', (e) => setComfortLevel(Number(e.target.value)));
 $('btnSettings').addEventListener('click', () => {
   $('settingsModal').classList.add('open');
@@ -767,10 +858,13 @@ function syncAllSettings() {
   syncComfortUI();
   speedSettings();
   syncPipSettings();
+  applyUiAppearance();
 }
 $('btnResetDefaults').addEventListener('click', () => {
   if (!window.confirm('Khôi phục tất cả cài đặt về mặc định? Điểm của chuyến đi đang chạy không bị xóa.')) return;
-  config = { ...DEFAULTS, visibleMetrics: [...METRICS], pipVisible: [...PIP_DEFAULT_VISIBLE], ...thresholdsFor(DEFAULTS.comfortLevel) };
+  config = { ...DEFAULTS, ...rangeDefaults(), visibleMetrics: [...METRICS], pipVisible: [...PIP_DEFAULT_VISIBLE], ...boundedThresholds(NUMERIC_RANGES.comfortLevel.default) };
+  // Độ nhạy mặc định và ngưỡng G phải đồng bộ.
+  config.comfortLevel=NUMERIC_RANGES.comfortLevel.default;
   syncAllSettings();
   saveConfig();
 });
@@ -782,10 +876,223 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+// OTA và Service Worker được quản lý tập trung tại ota.js.
+// Không đăng ký lần thứ hai ở đây để tránh cập nhật trùng nhau.
+
+/* ===== Điều khiển -/+ và thanh trượt ngắn, chống chạm nhầm khi cuộn ===== */
+function attachIntentionalSlider(range) {
+  let tracking=null;
+  range.addEventListener('pointerdown',event=>{
+    if(event.button!==0 && event.pointerType==='mouse') return;
+    tracking={id:event.pointerId,x:event.clientX,y:event.clientY,start:Number(range.value),active:false};
+    // Ngăn click làm nhảy giá trị. Di chuyển theo chiều dọc vẫn để trình duyệt cuộn.
+    event.preventDefault();
+  });
+  range.addEventListener('pointermove',event=>{
+    if(!tracking || event.pointerId!==tracking.id) return;
+    const dx=event.clientX-tracking.x,dy=event.clientY-tracking.y;
+    if(!tracking.active && (Math.abs(dx)<9 || Math.abs(dx)<Math.abs(dy)*1.2)) return;
+    tracking.active=true;
+    const key=RANGE_IDS[range.id]||range.dataset.numericKey;
+    const r=NUMERIC_RANGES[key];
+    if(!r) return;
+    const space=Math.max(20,range.getBoundingClientRect().width-18);
+    const next=rangeRound(key,tracking.start+dx/space*(r.max-r.min));
+    if(Number(range.value)!==next) {range.value=String(next);range.dispatchEvent(new Event('input',{bubbles:true}));}
+  });
+  const stop=()=>{tracking=null;};
+  range.addEventListener('pointerup',stop);
+  range.addEventListener('pointercancel',stop);
+  range.addEventListener('click',event=>event.preventDefault());
+  range.addEventListener('keydown',event=>{ // Bàn phím vẫn truy cập được.
+    if(!['ArrowLeft','ArrowDown','ArrowRight','ArrowUp','Home','End'].includes(event.key)) return;
+    event.preventDefault();
+    const key=RANGE_IDS[range.id]||range.dataset.numericKey,r=NUMERIC_RANGES[key];
+    if(!r) return;
+    const next=event.key==='Home'?r.min:event.key==='End'?r.max:rangeStep(key,['ArrowLeft','ArrowDown'].includes(event.key)?-1:1,range.value);
+    range.value=next;range.dispatchEvent(new Event('input',{bubbles:true}));
+  });
 }
+function upgradeSettingsSliders(){
+  for(const [id,key] of Object.entries(RANGE_IDS)) {
+    const el=$(id);
+    const label=el.previousElementSibling;
+    // Chỉ chuyển một lần; nhãn gốc vẫn gắn với đúng input để giữ khả năng truy cập.
+    const row=document.createElement('div');row.className='setting-range-row';
+    const minus=document.createElement('button'),plus=document.createElement('button');
+    minus.type=plus.type='button';minus.textContent='−';plus.textContent='+';
+    minus.setAttribute('aria-label','Giảm '+NUMERIC_BASE[key].label);
+    plus.setAttribute('aria-label','Tăng '+NUMERIC_BASE[key].label);
+    let output=null;
+    if(label && label.classList.contains('setting-label')){
+      output=label.querySelector('strong, span[id^="lbl"]');
+      if(output){output.classList.add('setting-number');}
+    }
+    el.replaceWith(row);
+    row.append(minus,el,plus);
+    if(output)row.append(output);
+    minus.addEventListener('click',()=>{
+      el.value=rangeStep(key,-1,el.value);el.dispatchEvent(new Event('input',{bubbles:true}));
+    });
+    plus.addEventListener('click',()=>{
+      el.value=rangeStep(key,1,el.value);el.dispatchEvent(new Event('input',{bubbles:true}));
+    });
+    attachIntentionalSlider(el);
+  }
+}
+function updateAllRangeLimits(){
+  for(const [id,key] of Object.entries(RANGE_IDS)) {
+    const range=$(id),r=NUMERIC_RANGES[key];
+    range.min=r.min;range.max=r.max;range.step=r.step;
+    range.value=String(rangeRound(key,config[key]));
+  }
+  const direct=$('uiEditSlider');
+  if(direct.dataset.numericKey && NUMERIC_RANGES[direct.dataset.numericKey]){
+    const r=NUMERIC_RANGES[direct.dataset.numericKey];
+    direct.min=r.min;direct.max=r.max;direct.step=r.step;
+  }
+}
+function applyRangeChangeToExisting(){
+  for(const key of Object.keys(NUMERIC_RANGES)) {
+    if(Object.prototype.hasOwnProperty.call(config,key)) config[key]=rangeRound(key,config[key]);
+  }
+  // Đồng bộ lại 5 ngưỡng nếu trước đó không dùng ngưỡng tùy chỉnh.
+  if(!config.customThresholds) Object.assign(config,boundedThresholds(config.comfortLevel));
+  syncAllSettings();updateAllRangeLimits();syncThresholdSliders();
+  updateAllRangeLimits();saveConfig();
+  if(uiEditMode && uiTarget) renderUiEditControls();
+}
+/* ===== Cấu hình giới hạn nhập trên điện thoại ===== */
+function initRangeEditor(){
+  const select=$('rangeConfigTarget');
+  for(const [key,r] of Object.entries(NUMERIC_BASE))select.add(new Option(r.label,key));
+  const inputs=['rangeEditMin','rangeEditMax','rangeEditStep','rangeEditDefault'];
+  const msg=$('rangeEditMessage');
+  function display(){
+    const r=NUMERIC_RANGES[select.value], b=NUMERIC_BASE[select.value];
+    inputs.forEach((id,i)=>$(id).value=String(r[['min','max','step','default'][i]]));
+    msg.textContent=`Giới hạn bảo vệ: ${b.safeMin} đến ${b.safeMax}. Thay đổi sẽ tự lưu sau khi rời ô.`;
+    msg.dataset.error='false';
+  }
+  function persist(){
+    const key=select.value;
+    const candidate={...NUMERIC_RANGES[key],min:Number($('rangeEditMin').value),max:Number($('rangeEditMax').value),step:Number($('rangeEditStep').value),default:Number($('rangeEditDefault').value)};
+    if(inputs.some(id=>$(id).value.trim()==='') || !rangeValid(key,candidate)){
+      msg.textContent='Giá trị chưa hợp lệ. Cần MIN < MAX, STEP > 0, DEFAULT trong phạm vi và không vượt giới hạn bảo vệ.';
+      msg.dataset.error='true';return;
+    }
+    Object.assign(NUMERIC_RANGES[key],candidate);
+    try{localStorage.setItem(NUMERIC_OVERRIDE_KEY,JSON.stringify(Object.fromEntries(Object.entries(NUMERIC_RANGES).map(([k,v])=>[k,{min:v.min,max:v.max,step:v.step,default:v.default}]))));}catch(e){console.warn('Không lưu được giới hạn',e);}
+    applyRangeChangeToExisting();msg.textContent='Đã áp dụng và tự lưu '+NUMERIC_BASE[key].label+'.';msg.dataset.error='false';
+  }
+  select.addEventListener('change',display);
+  for(const id of inputs)$(id).addEventListener('change',persist);
+  $('btnResetCurrentRange').addEventListener('click',()=>{
+    NUMERIC_RANGES[select.value]={...NUMERIC_BASE[select.value]};persistReset();display();
+  });
+  $('btnResetAllRanges').addEventListener('click',()=>{
+    if(!confirm('Khôi phục giới hạn MIN/MAX/STEP/DEFAULT của tất cả thông số?'))return;
+    for(const key of Object.keys(NUMERIC_BASE))NUMERIC_RANGES[key]={...NUMERIC_BASE[key]};
+    persistReset();display();
+  });
+  function persistReset(){
+    try{localStorage.setItem(NUMERIC_OVERRIDE_KEY,JSON.stringify(Object.fromEntries(Object.entries(NUMERIC_RANGES).map(([k,v])=>[k,{min:v.min,max:v.max,step:v.step,default:v.default}]))));}catch(e){}
+    applyRangeChangeToExisting();
+  }
+  display();
+}
+/* ===== Chế độ chỉnh trực tiếp trên One View ===== */
+const UI_EDIT_TARGETS={
+  score:{title:'ĐIỂM DI CHUYỂN',options:[['scoreFontSize','Cỡ chữ điểm'],['scoreColor','Màu chữ điểm']]},
+  speed:{title:'TỐC ĐỘ GPS',options:[['speedFontSize','Cỡ chữ tốc độ'],['speedColor','Màu chữ tốc độ'],['speedAlign','Vị trí tốc độ']]},
+  cup:{title:'CỐC G',options:[['cupSize','Đường kính cốc'],['cupAlign','Vị trí cốc G']]},
+  xoc:{title:'Ổ GÀ & ĐƯỜNG XÓC',options:[['barHeight','Chiều cao 4 thanh'],['barFontSize','Cỡ chữ tên thanh'],['colorXoc','Màu thanh ổ gà']]},
+  phanh:{title:'PHANH',options:[['barHeight','Chiều cao 4 thanh'],['barFontSize','Cỡ chữ tên thanh'],['colorPhanh','Màu thanh phanh']]},
+  cua:{title:'VÀO CUA',options:[['barHeight','Chiều cao 4 thanh'],['barFontSize','Cỡ chữ tên thanh'],['colorCua','Màu thanh vào cua']]},
+  ga:{title:'GA',options:[['barHeight','Chiều cao 4 thanh'],['barFontSize','Cỡ chữ tên thanh'],['colorGa','Màu thanh ga']]}
+};
+let uiEditMode=false,uiTarget=null;
+function directUiElements(target){
+  return target==='score'?[document.querySelector('.score-card')]:target==='speed'?[$('speedPanel')]:target==='cup'?[$('cupCircle')]:[...document.querySelectorAll(`[data-metric="${target}"]`)];
+}
+function enterDirectEdit(){
+  if(isRunning||isCountingDown){alert('Hãy DỪNG theo dõi và đỗ xe an toàn trước khi chỉnh giao diện.');return;}
+  closeSettings();uiEditMode=true;document.body.classList.add('ui-editing');
+  $('uiEditToolbar').hidden=false;$('uiEditPanel').hidden=true;uiTarget=null;
+}
+function leaveDirectEdit(){
+  uiEditMode=false;uiTarget=null;document.body.classList.remove('ui-editing');
+  $('uiEditToolbar').hidden=true;$('uiEditPanel').hidden=true;
+  document.querySelectorAll('.ui-target-active').forEach(el=>el.classList.remove('ui-target-active'));
+}
+function chooseUiTarget(target){
+  if(!uiEditMode||!UI_EDIT_TARGETS[target])return;
+  uiTarget=target;
+  document.querySelectorAll('.ui-target-active').forEach(el=>el.classList.remove('ui-target-active'));
+  directUiElements(target).forEach(el=>el?.classList.add('ui-target-active'));
+  $('uiEditTitle').textContent=UI_EDIT_TARGETS[target].title;
+  const sel=$('uiEditSetting');sel.replaceChildren();
+  UI_EDIT_TARGETS[target].options.forEach(([key,label])=>sel.add(new Option(label,key)));
+  $('uiEditPanel').className='ui-edit-panel '+(['xoc','phanh','ga','cua'].includes(target)?'dock-top':'dock-bottom');
+  $('uiEditPanel').hidden=false;renderUiEditControls();
+}
+function renderUiEditControls(){
+  const key=$('uiEditSetting').value;
+  const isNumber=Boolean(NUMERIC_RANGES[key]),isColor=/Color$/.test(key),isChoice=['cupAlign','speedAlign'].includes(key);
+  $('uiEditNumeric').hidden=!isNumber;
+  $('uiEditColorRow').hidden=!isColor;
+  $('uiEditChoiceRow').hidden=!isChoice;
+  if(isNumber){
+    const r=NUMERIC_RANGES[key],el=$('uiEditSlider');el.dataset.numericKey=key;
+    el.min=r.min;el.max=r.max;el.step=r.step;el.value=rangeRound(key,config[key]);
+    $('uiEditValue').textContent=Number(config[key]).toFixed(r.step<1?1:0)+' px';
+  }else{$('uiEditSlider').dataset.numericKey='';}
+  if(isColor)$('uiEditColor').value=config[key];
+  if(isChoice)$('uiEditChoice').value=config[key];
+}
+function updateUiValue(key,value){
+  if(NUMERIC_RANGES[key])config[key]=rangeRound(key,value);
+  else if(['cupAlign','speedAlign'].includes(key))config[key]=value;
+  else if(/^#[0-9a-f]{6}$/i.test(value)) config[key]=value;
+  else return;
+  applyUiAppearance();
+  if(['speedFontSize','speedColor','speedAlign'].includes(key))speedSettings();
+  saveConfig();renderUiEditControls();
+}
+function initDirectUiEditor(){
+  $('btnDirectEdit').addEventListener('click',enterDirectEdit);
+  $('btnFinishUiEdit').addEventListener('click',leaveDirectEdit);
+  $('btnCloseUiPanel').addEventListener('click',()=>{uiTarget=null;$('uiEditPanel').hidden=true;document.querySelectorAll('.ui-target-active').forEach(el=>el.classList.remove('ui-target-active'));});
+  $('uiEditSetting').addEventListener('change',renderUiEditControls);
+  for(const key of ['score','speed','cup','xoc','phanh','cua','ga']){
+    for(const el of directUiElements(key)){
+      if(!el)continue;
+      el.addEventListener('click',event=>{if(!uiEditMode)return;event.preventDefault();event.stopPropagation();chooseUiTarget(key);},true);
+    }
+  }
+  const slider=$('uiEditSlider');attachIntentionalSlider(slider);
+  slider.addEventListener('input',()=>updateUiValue(slider.dataset.numericKey,Number(slider.value)));
+  for(const [id,delta] of [['uiEditMinus',-1],['uiEditPlus',1]])$(id).addEventListener('click',()=>{
+    const key=$('uiEditSetting').value;updateUiValue(key,rangeStep(key,delta,config[key]));
+  });
+  $('uiEditColor').addEventListener('input',e=>updateUiValue($('uiEditSetting').value,e.target.value));
+  $('uiEditChoice').addEventListener('change',e=>updateUiValue($('uiEditSetting').value,e.target.value));
+}
+function initHelp(){
+  $('btnHelpSmoodri').addEventListener('click',()=>{$('smoodriHelp').classList.add('open');});
+  const close=()=>{$('smoodriHelp').classList.remove('open');};
+  $('btnCloseHelpSmoodri').addEventListener('click',close);
+  $('smoodriHelp').addEventListener('click',e=>{if(e.target.id==='smoodriHelp')close();});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'){close();if(uiEditMode)leaveDirectEdit();}});
+}
+upgradeSettingsSliders();
+initRangeEditor();
+initDirectUiEditor();
+initHelp();
+
 bindSliders();
 bindPipSettings();
 syncAllSettings();
+updateAllRangeLimits();
+applyUiAppearance();
 $('slopeText').textContent = 'Độ dốc: chưa xác định';

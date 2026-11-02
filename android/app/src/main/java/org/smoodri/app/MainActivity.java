@@ -74,7 +74,11 @@ public final class MainActivity extends Activity {
                 if (!"https".equals(uri.getScheme()) || !HOST.equals(uri.getHost())) return null;
                 String path = uri.getPath();
                 if (path == null || !path.startsWith(WEB_PATH)) return null;
-                if (!useBundledFallback && hasNetwork()) return null;
+                // Khi chưa vào chế độ dự phòng, cho Service Worker xử lý trước.
+                // Nhờ vậy WebView offline ưu tiên bản OTA đã lưu, không bị ép về
+                // tài nguyên cũ đóng gói trong APK. Chỉ dùng asset khi thật sự
+                // không thể mở trang và đã kích hoạt showBundledPage().
+                if (!useBundledFallback) return null;
                 String relative = path.substring(WEB_PATH.length());
                 if (relative.isEmpty()) relative = "index.html";
                 if (relative.contains("..") || relative.startsWith("/")) return null;

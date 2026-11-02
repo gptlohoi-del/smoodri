@@ -1,0 +1,59 @@
+name: Publish SmooDri Web OTA (Pages)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'style.css'
+      - 'app.js'
+      - 'ota.js'
+      - 'sw.js'
+      - 'manifest.json'
+      - 'icons/**'
+      - 'scripts/build_web_ota.py'
+      - 'tests/test_web_ota.py'
+      - '.github/workflows/deploy-web-ota.yml'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: smoodri-pages-deploy
+  cancel-in-progress: false
+
+jobs:
+  build-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test OTA build
+        run: python3 -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Create versioned OTA website
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/build_web_ota.py --output dist --revision "$GITHUB_SHA"
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+  deploy-pages:
+    needs: build-web
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
