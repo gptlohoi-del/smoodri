@@ -50,26 +50,33 @@ public final class DriveMonitorService extends Service implements SensorEventLis
 
     public static final class Snapshot {
         public final boolean active, calibrated;
-        public final int score, ga, phanh, cua, xoc;
+        public final int ga, phanh, cua, xoc;
         public final float speed, accuracy, hz;
         public final long gpsAgeMs, sensorAgeMs;
         public final String pipRatio, bg, fg;
-        public final int fontSize, fontWeight;
+        public final int speedFontSize, gaFontSize, phanhFontSize, cuaFontSize, xocFontSize, gpsFontSize;
+        public final int fontWeight;
         public final String[] visible;
         Snapshot() {
-            this(false, false, 100, 0, 0, 0, 0, Float.NaN, Float.NaN, Float.NaN,
-                 Long.MAX_VALUE, Long.MAX_VALUE, "16:9", "#0d1a2d", "#ffffff", 23, 700,
-                 new String[] {"score", "speed", "ga", "phanh", "cua", "xoc"});
+            this(false, false, 0, 0, 0, 0, Float.NaN, Float.NaN, Float.NaN,
+                 Long.MAX_VALUE, Long.MAX_VALUE, "16:9", "#0d1a2d", "#ffffff",
+                 44, 22, 22, 22, 22, 19, 700,
+                 new String[] {"speed", "ga", "phanh", "cua", "xoc", "gps"});
         }
-        Snapshot(boolean active, boolean calibrated, int score, int ga, int phanh, int cua, int xoc,
+        Snapshot(boolean active, boolean calibrated, int ga, int phanh, int cua, int xoc,
                  float speed, float accuracy, float hz, long gpsAgeMs, long sensorAgeMs,
-                 String pipRatio, String bg, String fg, int fontSize, int fontWeight, String[] visible) {
-            this.active=active; this.calibrated=calibrated; this.score=score;
+                 String pipRatio, String bg, String fg, int speedFontSize, int gaFontSize,
+                 int phanhFontSize, int cuaFontSize, int xocFontSize, int gpsFontSize,
+                 int fontWeight, String[] visible) {
+            this.active=active; this.calibrated=calibrated;
             this.ga=ga; this.phanh=phanh; this.cua=cua; this.xoc=xoc;
             this.speed=speed; this.accuracy=accuracy; this.hz=hz;
             this.gpsAgeMs=gpsAgeMs; this.sensorAgeMs=sensorAgeMs;
             this.pipRatio=pipRatio; this.bg=bg; this.fg=fg;
-            this.fontSize=fontSize; this.fontWeight=fontWeight; this.visible=visible;
+            this.speedFontSize=speedFontSize; this.gaFontSize=gaFontSize;
+            this.phanhFontSize=phanhFontSize; this.cuaFontSize=cuaFontSize;
+            this.xocFontSize=xocFontSize; this.gpsFontSize=gpsFontSize;
+            this.fontWeight=fontWeight; this.visible=visible;
         }
     }
 
@@ -82,8 +89,7 @@ public final class DriveMonitorService extends Service implements SensorEventLis
     private double[] sum = new double[3];
     private final ArrayDeque<double[]> calibrationWindow = new ArrayDeque<>();
     private double smX, smLon, smVert, vertBaseline, slopeBaselineLon, prevX;
-    private double penalty;
-    private int score = 100, ga, phanh, cua, xoc;
+    private int ga, phanh, cua, xoc;
     private float speed = Float.NaN, accuracy = Float.NaN, hz = Float.NaN;
     private float previousSpeed = Float.NaN;
     private int lastSign;
@@ -183,7 +189,7 @@ public final class DriveMonitorService extends Service implements SensorEventLis
     }
     private String[] visible() {
         JSONArray a = configuration.optJSONArray("pipVisible");
-        if (a == null || a.length() == 0) return new String[] {"score", "speed", "ga", "phanh", "cua", "xoc"};
+        if (a == null || a.length() == 0) return new String[] {"speed", "ga", "phanh", "cua", "xoc", "gps"};
         String[] result = new String[a.length()];
         for (int i=0; i<a.length(); i++) result[i] = a.optString(i, "");
         return result;
@@ -254,11 +260,6 @@ public final class DriveMonitorService extends Service implements SensorEventLis
                 jerk>setting("maxJerk",0.24)*0.25) { lastReversal=now; reversals.addLast(now); }
         if (sign!=0) lastSign=sign;
         while (!reversals.isEmpty() && now-reversals.peekFirst()>3200) reversals.removeFirst();
-        double discomfort=Math.max(0,(ga-95)/35.0)*0.8 + Math.max(0,(phanh-95)/35.0)*1.15 +
-                Math.max(0,(cua-95)/35.0)*0.95 + Math.max(0,(xoc-95)/35.0)*1.4;
-        if (reversals.size()>=2) discomfort+=1.8;
-        penalty+=dt*discomfort*1.9;
-        score=(int)Math.round(Math.max(0,100-penalty));
         // Only in background/PiP: web already plays alerts while it is in the foreground.
         int maxAll=Math.max(Math.max(ga,phanh),Math.max(cua,xoc));
         if(!MainActivity.uiForeground && configuration.optBoolean("soundEnabled",true) && maxAll>=100 && now-lastAlert>5000) {
@@ -295,11 +296,17 @@ public final class DriveMonitorService extends Service implements SensorEventLis
         long now=SystemClock.elapsedRealtime();
         String ratio=configuration.optString("pipRatio","16:9");
         if (!ratio.equals("16:9") && !ratio.equals("4:3") && !ratio.equals("1:1")) ratio="16:9";
-        int f=(int)clamp(setting("pipFontSize",23),16,32);
-        int w=(int)clamp(setting("pipFontWeight",700),500,800);
-        lastSnapshot=new Snapshot(true,calibrated,score,ga,phanh,cua,xoc,speed,accuracy,hz,
+        int speedFont=(int)clamp(setting("pipSpeedFontSize",44),16,84);
+        int gaFont=(int)clamp(setting("pipGaFontSize",22),10,45);
+        int phanhFont=(int)clamp(setting("pipPhanhFontSize",22),10,45);
+        int cuaFont=(int)clamp(setting("pipCuaFontSize",22),10,45);
+        int xocFont=(int)clamp(setting("pipXocFontSize",22),10,45);
+        int gpsFont=(int)clamp(setting("pipGpsFontSize",19),10,44);
+        int weight=(int)clamp(setting("pipFontWeight",700),500,800);
+        lastSnapshot=new Snapshot(true,calibrated,ga,phanh,cua,xoc,speed,accuracy,hz,
           lastGps==0?Long.MAX_VALUE:now-lastGps, lastSensor==0?Long.MAX_VALUE:now-lastSensor,
-          ratio,color("pipBgColor","#0d1a2d"),color("pipTextColor","#ffffff"),f,w,visible());
+          ratio,color("pipBgColor","#0d1a2d"),color("pipTextColor","#ffffff"),
+          speedFont,gaFont,phanhFont,cuaFont,xocFont,gpsFont,weight,visible());
     }
     @Override public void onAccuracyChanged(Sensor sensor, int accuracy) {}
     @Override public void onLocationChanged(Location loc) {

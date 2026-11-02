@@ -32,15 +32,15 @@
       </div>
     </div>
 
-    <!-- HÀNG 2: ĐIỂM ÊM ÁI (+ SỐ LẦN VƯỢT NGƯỠNG) & BẢNG CẢNH BÁO -->
+    <!-- HÀNG 2: ĐIỂM HIỆN TẠI (KHÔNG CÓ ĐIỂM CHUYẾN ĐI TÍCH LŨY) VÀ CẢNH BÁO -->
     <div class="status-row">
       <div class="score-card">
-        <span class="score-label">ĐIỂM CHUYẾN ĐI</span>
+        <span class="score-label">ĐIỂM HIỆN TẠI</span>
         <div class="score-main-wrap">
           <span id="scoreValue" class="score-value">100</span>
           <span id="violationCount" class="violation-badge" title="Số lần vượt ngưỡng 100% hoặc lạng lách">0</span>
         </div>
-        <span id="instantScore" class="instant-score">Hiện tại: 100</span>
+        <span class="instant-score">Có thể hồi phục khi lái êm</span>
       </div>
       <div id="alertBanner" class="alert-banner">
         <div id="alertTitle" class="alert-title">SẴN SÀNG</div>
@@ -194,7 +194,7 @@
 
       <div class="setting-group ui-mode-entry">
         <button id="btnDirectEdit" type="button" class="btn-option ui-mode-launch">✏️ CHỈNH GIAO DIỆN TRỰC TIẾP</button>
-        <p class="setting-hint">Đóng cửa sổ này, chạm vào điểm chuyến đi, tốc độ, cốc G hoặc thanh chỉ số để xem thay đổi ngay trên One View. Chỉ chỉnh khi đã dừng theo dõi.</p>
+        <p class="setting-hint">Đóng cửa sổ này, chạm vào điểm hiện tại, tốc độ, cốc G hoặc thanh chỉ số để xem thay đổi ngay trên One View. Chỉ chỉnh khi đã dừng theo dõi.</p>
       </div>
       <div class="section-divider">1. Mức độ êm ái</div>
       <div class="setting-group">
@@ -281,8 +281,19 @@
         <div class="setting-label"><label for="selPipRatio">Tỷ lệ cửa sổ</label>
           <select id="selPipRatio"><option value="16:9">16:9 — Ngang</option><option value="4:3">4:3 — Cân đối</option><option value="1:1">1:1 — Vuông</option></select>
         </div>
-        <div class="setting-label"><label for="rngPipFontSize">Cỡ chữ điểm chính</label><strong id="lblPipFontSize">23px</strong></div>
-        <input id="rngPipFontSize" type="range" min="16" max="32" step="1" value="23" />
+        <div class="setting-hint">Cỡ chữ PiP được chỉnh <strong>độc lập cho từng thông số</strong>. Android chỉ quyết định kích thước cửa sổ; cỡ chữ dưới đây điều khiển chữ do PiP native vẽ.</div>
+        <div class="setting-label"><label for="rngPipSpeedFontSize">Cỡ chữ TỐC ĐỘ trong PiP</label><strong id="lblPipSpeedFontSize">44px</strong></div>
+        <input id="rngPipSpeedFontSize" type="range" />
+        <div class="setting-label"><label for="rngPipGaFontSize">Cỡ chữ GA trong PiP</label><strong id="lblPipGaFontSize">22px</strong></div>
+        <input id="rngPipGaFontSize" type="range" />
+        <div class="setting-label"><label for="rngPipPhanhFontSize">Cỡ chữ PHANH trong PiP</label><strong id="lblPipPhanhFontSize">22px</strong></div>
+        <input id="rngPipPhanhFontSize" type="range" />
+        <div class="setting-label"><label for="rngPipCuaFontSize">Cỡ chữ CUA trong PiP</label><strong id="lblPipCuaFontSize">22px</strong></div>
+        <input id="rngPipCuaFontSize" type="range" />
+        <div class="setting-label"><label for="rngPipXocFontSize">Cỡ chữ Ổ GÀ trong PiP</label><strong id="lblPipXocFontSize">22px</strong></div>
+        <input id="rngPipXocFontSize" type="range" />
+        <div class="setting-label"><label for="rngPipGpsFontSize">Cỡ chữ GPS trong PiP</label><strong id="lblPipGpsFontSize">19px</strong></div>
+        <input id="rngPipGpsFontSize" type="range" />
         <div class="setting-label"><label for="selPipFontWeight">Độ đậm chữ</label>
           <select id="selPipFontWeight"><option value="500">Vừa</option><option value="600">Đậm vừa</option><option value="700" selected>Đậm</option><option value="800">Rất đậm</option></select>
         </div>
@@ -290,7 +301,6 @@
         <div class="setting-label"><label for="inpPipText">Màu chữ PiP</label><input id="inpPipText" type="color" value="#ffffff" /></div>
         <div class="setting-label"><span>Thông tin xuất hiện trong PiP</span></div>
         <div class="metric-choices" id="pipMetricChoices">
-          <label><input type="checkbox" data-pip-visible="score" checked /> Điểm êm ái (native)</label>
           <label><input type="checkbox" data-pip-visible="speed" checked /> Tốc độ GPS (native)</label>
           <label><input type="checkbox" data-pip-visible="ga" checked /> GA</label>
           <label><input type="checkbox" data-pip-visible="phanh" checked /> PHANH</label>
@@ -300,7 +310,7 @@
         </div>
         <div id="pipSettingsPreview" class="pip-settings-preview" aria-label="Xem trước bố cục PiP">
           <div class="pip-preview-head"><strong>🚘 SMOODRI</strong><span>ĐANG ĐO</span></div>
-          <div class="pip-preview-main"><span data-preview="score">Điểm <b>96</b></span><span data-preview="speed">Tốc độ <b>65 km/h</b></span></div>
+          <div class="pip-preview-main"><span data-preview="speed">Tốc độ <b>65 km/h</b></span></div>
           <div class="pip-preview-metrics">
             <span data-preview="ga">GA 18%</span><span data-preview="phanh">PHANH 25%</span><span data-preview="cua">CUA 42%</span><span data-preview="xoc">Ổ GÀ 12%</span>
           </div>
@@ -412,7 +422,7 @@
         <h4>2. Cài đặt chung</h4><p>Nhấn ⚙️ để mở popup CÀI ĐẶT CHUNG. Mỗi thông số số có nút −, thanh trượt ngắn và nút +. Chạm nhẹ hoặc vuốt dọc trên thanh sẽ không làm nhảy giá trị; kéo ngang có chủ ý để chỉnh. Thay đổi được lưu tự động. Nhấn ĐÓNG hoặc chạm ngoài popup để thoát.</p>
         <h4>3. Chỉnh giao diện trực tiếp</h4><p>Khi đã DỪNG theo dõi, mở CÀI ĐẶT CHUNG và nhấn CHỈNH GIAO DIỆN TRỰC TIẾP. Chạm vào điểm, tốc độ, cốc G hoặc thanh chỉ số. Thanh điều khiển nhỏ xuất hiện ở phía đối diện, để bạn nhìn rõ phần đang chỉnh. Chạm XONG để trở lại giao diện bình thường.</p>
         <h4>4. Giới hạn MIN/MAX/STEP/DEFAULT</h4><p>Trong CÀI ĐẶT CHUNG, mở mục GIỚI HẠN THÔNG SỐ. Chọn một thông số và nhập các giá trị mới. Hệ thống chỉ nhận giá trị hợp lệ trong giới hạn bảo vệ. Nút Mặc định giúp khôi phục giới hạn gốc mà không xóa dữ liệu chuyến đi.</p>
-        <h4>5. PiP và cập nhật</h4><p>Khi chạy trong APK SmooDri có hỗ trợ native, các cài đặt PiP được gửi đến dịch vụ theo dõi Android. Trên web/PWA chỉ hiển thị bản xem trước. Kích thước cửa sổ PiP thực tế do Android kiểm soát. Những thay đổi HTML/CSS/JS có thể nhận qua OTA web khi bản APK hỗ trợ.</p>
+        <h4>5. PiP và cập nhật</h4><p>Từ CÀI ĐẶT CHUNG có thể chỉnh cỡ chữ riêng của TỐC ĐỘ, GA, PHANH, CUA, Ổ GÀ, GPS trong PiP. PiP không có điểm chuyến đi. Khi chạy trong APK SmooDri có hỗ trợ native, các cài đặt PiP được gửi đến dịch vụ theo dõi Android. Trên web/PWA chỉ hiển thị bản xem trước. Kích thước cửa sổ PiP thực tế do Android kiểm soát. Những thay đổi HTML/CSS/JS có thể nhận qua OTA web khi bản APK hỗ trợ.</p>
         <h4>6. Cập nhật OTA</h4><p>Ứng dụng tự kiểm tra khi mở có Internet. Khi có phiên bản web mới, chương trình tải vào bộ nhớ đệm và tự kích hoạt khi chưa theo dõi chuyến đi. Nếu đang đo, bản mới sẽ được áp dụng khi dừng hoặc mở ứng dụng lần sau. Các chức năng Android gốc như quyền, Foreground Service, PiP native, icon APK vẫn cần APK mới. Có thể nhấn KIỂM TRA CẬP NHẬT trong CÀI ĐẶT CHUNG để kiểm tra thủ công.</p>
         <h4>6. Lưu ý an toàn</h4><p>Chỉ thao tác cài đặt khi xe đã đỗ ở nơi an toàn. Nếu giao diện quá chật, giảm cỡ chữ hoặc chiều cao thanh để bảo đảm One View.</p>
       </div>

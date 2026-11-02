@@ -53,7 +53,12 @@ const NUMERIC_BASE = Object.freeze({
   volumePercent:{label:'Âm lượng cảnh báo',min:10,max:100,step:5,default:70,safeMin:0,safeMax:100},
   speedFontSize:{label:'Cỡ chữ tốc độ',min:32,max:100,step:2,default:64,safeMin:12,safeMax:120},
   gpsFallbackSeconds:{label:'Thời gian ước tính mất GPS (giây)',min:0,max:3,step:0.5,default:2,safeMin:0,safeMax:3},
-  pipFontSize:{label:'Cỡ chữ điểm trong PiP',min:16,max:32,step:1,default:23,safeMin:10,safeMax:48},
+  pipSpeedFontSize:{label:'Cỡ chữ TỐC ĐỘ PiP (px)',min:24,max:70,step:1,default:44,safeMin:16,safeMax:84},
+  pipGaFontSize:{label:'Cỡ chữ GA PiP (px)',min:12,max:40,step:1,default:22,safeMin:10,safeMax:45},
+  pipPhanhFontSize:{label:'Cỡ chữ PHANH PiP (px)',min:12,max:40,step:1,default:22,safeMin:10,safeMax:45},
+  pipCuaFontSize:{label:'Cỡ chữ CUA PiP (px)',min:12,max:40,step:1,default:22,safeMin:10,safeMax:45},
+  pipXocFontSize:{label:'Cỡ chữ Ổ GÀ PiP (px)',min:12,max:40,step:1,default:22,safeMin:10,safeMax:45},
+  pipGpsFontSize:{label:'Cỡ chữ GPS PiP (px)',min:12,max:36,step:1,default:19,safeMin:10,safeMax:44},
   maxGa:{label:'Ngưỡng GA (G)',min:0.05,max:0.50,step:0.01,default:0.2,safeMin:0.05,safeMax:0.70},
   maxPhanh:{label:'Ngưỡng PHANH (G)',min:0.05,max:0.55,step:0.01,default:0.224,safeMin:0.05,safeMax:0.70},
   maxCua:{label:'Ngưỡng VÀO CUA (G)',min:0.05,max:0.50,step:0.01,default:0.2,safeMin:0.05,safeMax:0.70},
@@ -97,7 +102,9 @@ function rangeRound(key, value) {
 function rangeStep(key,delta,current) { return rangeRound(key,Number(current)+delta*NUMERIC_RANGES[key].step); }
 function rangeDefaults() {return Object.fromEntries(Object.keys(NUMERIC_RANGES).map(key=>[key,NUMERIC_RANGES[key].default]));}
 const RANGE_IDS={
-  rngComfort:'comfortLevel',rngVolumeBoost:'volumePercent',rngSpeedSize:'speedFontSize',rngGpsFallback:'gpsFallbackSeconds',rngPipFontSize:'pipFontSize',
+  rngComfort:'comfortLevel',rngVolumeBoost:'volumePercent',rngSpeedSize:'speedFontSize',rngGpsFallback:'gpsFallbackSeconds',
+  rngPipSpeedFontSize:'pipSpeedFontSize',rngPipGaFontSize:'pipGaFontSize',rngPipPhanhFontSize:'pipPhanhFontSize',
+  rngPipCuaFontSize:'pipCuaFontSize',rngPipXocFontSize:'pipXocFontSize',rngPipGpsFontSize:'pipGpsFontSize',
   rngMaxGa:'maxGa',rngMaxPhanh:'maxPhanh',rngMaxCua:'maxCua',rngPotholeThreshold:'potholeThreshold',rngMaxJerk:'maxJerk',
   rngStartDelay:'startDelay',rngScoreRecovery:'scoreRecovery',rngPeakHoldTime:'peakHoldTime',rngAlertHoldTime:'alertHoldTime'
 };
@@ -111,8 +118,9 @@ const THRESHOLD_KEYS = Object.keys(BASE_THRESHOLDS);
 const METRICS = ['xoc', 'phanh', 'cua', 'ga'];
 const WAVE_NAMES = { square: 'Bíp rõ', triangle: 'Bíp dịu', sine: 'Bíp nhẹ' };
 const POTHOLE_NAMES = { sawtooth: 'Âm trầm', square: 'Âm mạnh', sine: 'Âm nhẹ' };
-const PIP_FIELDS = ['score','speed','ga','phanh','cua','xoc','gps'];
-const PIP_DEFAULT_VISIBLE = ['score','speed','ga','phanh','cua','xoc'];
+const PIP_FIELDS = ['speed','ga','phanh','cua','xoc','gps'];
+const PIP_DEFAULT_VISIBLE = ['speed','ga','phanh','cua','xoc','gps'];
+const PIP_FONT_KEYS = ['pipSpeedFontSize','pipGaFontSize','pipPhanhFontSize','pipCuaFontSize','pipXocFontSize','pipGpsFontSize'];
 const DEFAULTS = {
   comfortLevel: 60, customThresholds: false,
   maxGa: 0.20, maxPhanh: 0.224, maxCua: 0.20,
@@ -124,7 +132,7 @@ const DEFAULTS = {
   peakHoldTime: 1.5, alertHoldTime: 3,
   theme: 'light', chartType: 'bar',
   speedVisible: true, speedFontSize: 64, speedColor: '#009c73', speedWeight: 700, gpsFallbackSeconds: 2,
-  pipRatio: '16:9', pipFontSize: 23, pipFontWeight: 700,
+  pipRatio: '16:9', pipFontWeight: 700,
   pipBgColor: '#0d1a2d', pipTextColor: '#ffffff', pipVisible: [...PIP_DEFAULT_VISIBLE],
   scoreFontSize:32,scoreColor:'#059669',cupSize:176,cupAlign:'left',speedAlign:'left',barHeight:38,barFontSize:12.5,
   colorXoc:'#e05b37',colorPhanh:'#dc2626',colorCua:'#0284c7',colorGa:'#059669'
@@ -178,7 +186,9 @@ function loadConfig() {
   cfg.speedColor = /^#[0-9a-fA-F]{6}$/.test(raw.speedColor) ? raw.speedColor : '#009c73';
   cfg.gpsFallbackSeconds = rangeRound('gpsFallbackSeconds',finite(raw.gpsFallbackSeconds,cfg.gpsFallbackSeconds));
   cfg.pipRatio = ['16:9','4:3','1:1'].includes(raw.pipRatio) ? raw.pipRatio : DEFAULTS.pipRatio;
-  cfg.pipFontSize = rangeRound('pipFontSize',finite(raw.pipFontSize,cfg.pipFontSize));
+  // Chuyển cài đặt cũ sang cỡ chữ tốc độ mới (đồng thời bỏ điểm chuyến đi PiP).
+  // Giá trị cũ 23 px đã bị thu nhỏ đáng kể trong Canvas, do đó không dùng thẳng cho mục mới.
+  for(const key of PIP_FONT_KEYS) cfg[key]=rangeRound(key,finite(raw[key],cfg[key]));
   cfg.pipFontWeight = [500,600,700,800].includes(Number(raw.pipFontWeight)) ? Number(raw.pipFontWeight) : DEFAULTS.pipFontWeight;
   cfg.pipBgColor = /^#[0-9a-fA-F]{6}$/.test(raw.pipBgColor) ? raw.pipBgColor : DEFAULTS.pipBgColor;
   cfg.pipTextColor = /^#[0-9a-fA-F]{6}$/.test(raw.pipTextColor) ? raw.pipTextColor : DEFAULTS.pipTextColor;
@@ -420,8 +430,11 @@ function bindNumericSlider(id, labelId, cfgKey, suffix, decimals, custom = false
 /* PiP settings: App Hub reads the saved config via its injected same-origin bridge. */
 function syncPipSettings() {
   $('selPipRatio').value = config.pipRatio;
-  $('rngPipFontSize').value = String(config.pipFontSize);
-  $('lblPipFontSize').textContent = `${config.pipFontSize}px`;
+  for(const key of PIP_FONT_KEYS){
+    const id='rng'+key.slice(0,1).toUpperCase()+key.slice(1);
+    const labelId='lbl'+key.slice(0,1).toUpperCase()+key.slice(1);
+    $(id).value=String(config[key]);$(labelId).textContent=config[key]+'px';
+  }
   $('selPipFontWeight').value = String(config.pipFontWeight);
   $('inpPipBg').value = config.pipBgColor;
   $('inpPipText').value = config.pipTextColor;
@@ -431,7 +444,12 @@ function syncPipSettings() {
   const preview=$('pipSettingsPreview');
   preview.style.setProperty('--pip-bg',config.pipBgColor);
   preview.style.setProperty('--pip-text',config.pipTextColor);
-  preview.style.setProperty('--pip-main',`${config.pipFontSize}px`);
+  preview.style.setProperty('--pip-speed',`${config.pipSpeedFontSize}px`);
+  preview.style.setProperty('--pip-ga',`${config.pipGaFontSize}px`);
+  preview.style.setProperty('--pip-phanh',`${config.pipPhanhFontSize}px`);
+  preview.style.setProperty('--pip-cua',`${config.pipCuaFontSize}px`);
+  preview.style.setProperty('--pip-xoc',`${config.pipXocFontSize}px`);
+  preview.style.setProperty('--pip-gps',`${config.pipGpsFontSize}px`);
   preview.style.setProperty('--pip-weight',String(config.pipFontWeight));
   preview.style.aspectRatio = config.pipRatio.replace(':',' / ');
   preview.querySelectorAll('[data-preview]').forEach(node=>{
@@ -440,7 +458,13 @@ function syncPipSettings() {
 }
 function bindPipSettings() {
   $('selPipRatio').addEventListener('change',e=>{config.pipRatio=e.target.value;syncPipSettings();saveConfig();});
-  $('rngPipFontSize').addEventListener('input',e=>{config.pipFontSize=Number(e.target.value);syncPipSettings();saveConfig();});
+  for(const key of PIP_FONT_KEYS){
+    const id='rng'+key.slice(0,1).toUpperCase()+key.slice(1);
+    $(id).addEventListener('input',e=>{
+      config[key]=rangeRound(key,e.target.value);
+      syncPipSettings();saveConfig();
+    });
+  }
   $('selPipFontWeight').addEventListener('change',e=>{config.pipFontWeight=Number(e.target.value);syncPipSettings();saveConfig();});
   $('inpPipBg').addEventListener('input',e=>{config.pipBgColor=e.target.value;syncPipSettings();saveConfig();});
   $('inpPipText').addEventListener('input',e=>{config.pipTextColor=e.target.value;syncPipSettings();saveConfig();});
@@ -525,7 +549,6 @@ let lastSignX = 0;
 let lastReversalAt = 0;
 let reversalTimestamps = [];
 let instantScore = 100;
-let tripPenalty = 0;
 let violationCount = 0;
 let isCurrentlyViolating = false;
 let lastViolationAt = -Infinity;
@@ -559,11 +582,10 @@ function resetSamplesAndScores(resetTrip) {
   Object.keys(alertHold.peaks).forEach((k) => { alertHold.peaks[k] = 0; });
   isCurrentlyViolating = false;
   if (resetTrip) {
-    instantScore = 100; tripPenalty = 0; violationCount = 0;
+    instantScore = 100; violationCount = 0;
     lastViolationAt = -Infinity;
     $('scoreValue').textContent = '100';
     $('scoreValue').style.color = 'var(--green)';
-    $('instantScore').textContent = 'Hiện tại: 100';
     $('violationCount').textContent = '0';
   }
 }
@@ -784,18 +806,16 @@ function evaluateAndRender(gx, glon, gvert, weaving, dt, now) {
     isCurrentlyViolating = true;
   } else if (maxAll < 85 && !weaving) isCurrentlyViolating = false;
 
-  // Điểm hiện tại hồi phục theo thời gian; điểm chuyến đi tích lũy KHÔNG tự hồi phục.
+  // Chỉ giữ điểm hiện tại, hồi phục khi lái êm; không tích lũy điểm chuyến đi.
   const excess = (pct) => Math.max(0, (pct - 95) / 35);
   const discomfort = excess(values.Ga) * 0.8 + excess(values.Phanh) * 1.15 +
     excess(values.Cua) * 0.95 + excess(values.Xoc) * 1.40 + (weaving ? 1.8 : 0);
-  tripPenalty += dt * discomfort * 1.9 + (potholeNew ? 0.55 : 0);
   instantScore = discomfort > 0
     ? Math.max(0, instantScore - dt * discomfort * 6)
     : Math.min(100, instantScore + dt * config.scoreRecovery);
-  const tripScore = Math.round(Math.max(0, 100 - tripPenalty));
-  $('scoreValue').textContent = String(tripScore);
-  $('scoreValue').style.color = tripScore >= 85 ? 'var(--green)' : tripScore >= 65 ? 'var(--yellow)' : 'var(--red)';
-  $('instantScore').textContent = `Hiện tại: ${Math.round(instantScore)}`;
+  const currentScore = Math.round(instantScore);
+  $('scoreValue').textContent = String(currentScore);
+  $('scoreValue').style.color = currentScore >= 85 ? 'var(--green)' : currentScore >= 65 ? 'var(--yellow)' : 'var(--red)';
 
   const alertHoldMs = config.alertHoldTime * 1000;
   const triggered = weaving || maxAll >= 100;
@@ -918,7 +938,7 @@ function syncAllSettings() {
   applyUiAppearance();
 }
 $('btnResetDefaults').addEventListener('click', () => {
-  if (!window.confirm('Khôi phục tất cả cài đặt về mặc định? Điểm của chuyến đi đang chạy không bị xóa.')) return;
+  if (!window.confirm('Khôi phục tất cả cài đặt về mặc định? Dữ liệu theo dõi đang chạy không bị xóa.')) return;
   config = { ...DEFAULTS, ...rangeDefaults(), visibleMetrics: [...METRICS], pipVisible: [...PIP_DEFAULT_VISIBLE], ...boundedThresholds(NUMERIC_RANGES.comfortLevel.default) };
   // Độ nhạy mặc định và ngưỡng G phải đồng bộ.
   config.comfortLevel=NUMERIC_RANGES.comfortLevel.default;
@@ -1060,7 +1080,7 @@ function initRangeEditor(){
 }
 /* ===== Chế độ chỉnh trực tiếp trên One View ===== */
 const UI_EDIT_TARGETS={
-  score:{title:'ĐIỂM DI CHUYỂN',options:[['scoreFontSize','Cỡ chữ điểm'],['scoreColor','Màu chữ điểm']]},
+  score:{title:'ĐIỂM HIỆN TẠI',options:[['scoreFontSize','Cỡ chữ điểm'],['scoreColor','Màu chữ điểm']]},
   speed:{title:'TỐC ĐỘ GPS',options:[['speedFontSize','Cỡ chữ tốc độ'],['speedColor','Màu chữ tốc độ'],['speedAlign','Vị trí tốc độ']]},
   cup:{title:'CỐC G',options:[['cupSize','Đường kính cốc'],['cupAlign','Vị trí cốc G']]},
   xoc:{title:'Ổ GÀ & ĐƯỜNG XÓC',options:[['barHeight','Chiều cao 4 thanh'],['barFontSize','Cỡ chữ tên thanh'],['colorXoc','Màu thanh ổ gà']]},

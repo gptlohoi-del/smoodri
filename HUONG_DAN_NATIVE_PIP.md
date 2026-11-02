@@ -1,6 +1,6 @@
 # PiP native và Foreground Service
 
-Phiên bản SmooDri 1.0.2 có đủ các file Android native hỗ trợ PiP và Foreground Service.
+Phiên bản SmooDri 1.0.3 có đủ các file Android native hỗ trợ PiP và Foreground Service.
 
 - `MainActivity.java`: WebView, cầu nối JavaScript, mở PiP, xử lý ngoại tuyến.
 - `DriveMonitorService.java`: đọc cảm biến và GPS, thông báo chạy nền, cảnh báo âm thanh native.
