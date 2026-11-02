@@ -218,15 +218,23 @@ public final class MainActivity extends Activity {
             else signalStarted(false,"SmooDri cần quyền Vị trí để theo dõi khi chạy nền.");
         }
     }
-    private void updatePipParams(){
-        if(Build.VERSION.SDK_INT<26)return;
+    // Dùng cùng một bộ tham số cho cả PiP tự động và PiP mở bằng nút.
+    // Activity không có API getPictureInPictureParams().
+    private PictureInPictureParams buildPipParams(){
         String ratio=DriveMonitorService.snapshot().pipRatio;
         int a=16,b=9;
         if("4:3".equals(ratio)){a=4;b=3;}
-        if("1:1".equals(ratio)){a=1;b=1;}
-        PictureInPictureParams.Builder builder=new PictureInPictureParams.Builder().setAspectRatio(new Rational(a,b));
-        if(Build.VERSION.SDK_INT>=31)builder.setAutoEnterEnabled(DriveMonitorService.running() || sessionRequested);
-        setPictureInPictureParams(builder.build());
+        else if("1:1".equals(ratio)){a=1;b=1;}
+        PictureInPictureParams.Builder builder=new PictureInPictureParams.Builder()
+                .setAspectRatio(new Rational(a,b));
+        if(Build.VERSION.SDK_INT>=31){
+            builder.setAutoEnterEnabled(DriveMonitorService.running() || sessionRequested);
+        }
+        return builder.build();
+    }
+    private void updatePipParams(){
+        if(Build.VERSION.SDK_INT<26)return;
+        setPictureInPictureParams(buildPipParams());
     }
     private void openPip(boolean userInitiated){
         if(Build.VERSION.SDK_INT<26){Toast.makeText(this,"Thiết bị không hỗ trợ PiP.",Toast.LENGTH_SHORT).show();return;}
@@ -239,14 +247,14 @@ public final class MainActivity extends Activity {
                     android.os.Process.myUid(),getPackageName())==AppOpsManager.MODE_IGNORED){
                 if(userInitiated){
                     Toast.makeText(this,"Hãy bật quyền Hình trong hình (PiP) cho SmooDri.",Toast.LENGTH_LONG).show();
-                    Intent settings=new Intent(Settings.ACTION_PICTURE_IN_PICTURE_SETTINGS,
+                    Intent settings=new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                         Uri.parse("package:"+getPackageName()));
                     startActivity(settings);
                 }
                 return;
             }
             updatePipParams();
-            if(!enterPictureInPictureMode(getPictureInPictureParams())){
+            if(!enterPictureInPictureMode(buildPipParams())){
                 Toast.makeText(this,"Android chưa cho phép mở PiP; hãy kiểm tra cài đặt Hình trong hình.",Toast.LENGTH_LONG).show();
             }
         }catch(RuntimeException e){
