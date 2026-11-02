@@ -46,32 +46,33 @@ function syncNativeConfig() {
 
 
 
-/* BẢNG GIỚI HẠN TẬP TRUNG: có thể chỉnh trực tiếp trong CÀI ĐẶT NÂNG CAO.
-   safeMin/safeMax là rào bảo vệ riêng; không thay từ UI. */
+/* BẢNG CẤU HÌNH TẬP TRUNG: MIN/MAX/STEP/DEFAULT được chỉnh trên điện thoại.
+   Không đặt giới hạn MIN/MAX ẩn. Chỉ kiểm tra tính hợp lệ toán học.
+   Cấu hình mặc định gốc được giữ nguyên để phục hồi bất kỳ lúc nào. */
 const NUMERIC_BASE = Object.freeze({
-  comfortLevel: {label:'Độ nhạy đánh giá',min:20,max:100,step:5,default:60,safeMin:20,safeMax:100},
-  volumePercent:{label:'Âm lượng cảnh báo',min:10,max:100,step:5,default:70,safeMin:0,safeMax:100},
-  speedFontSize:{label:'Cỡ chữ tốc độ',min:32,max:100,step:2,default:64,safeMin:12,safeMax:120},
-  gpsFallbackSeconds:{label:'Thời gian ước tính mất GPS (giây)',min:0,max:3,step:0.5,default:2,safeMin:0,safeMax:3},
-  pipSpeedFontSize:{label:'Cỡ chữ TỐC ĐỘ PiP (px)',min:24,max:70,step:1,default:44,safeMin:16,safeMax:84},
-  pipGaFontSize:{label:'Cỡ chữ GA PiP (px)',min:12,max:40,step:1,default:22,safeMin:10,safeMax:45},
-  pipPhanhFontSize:{label:'Cỡ chữ PHANH PiP (px)',min:12,max:40,step:1,default:22,safeMin:10,safeMax:45},
-  pipCuaFontSize:{label:'Cỡ chữ CUA PiP (px)',min:12,max:40,step:1,default:22,safeMin:10,safeMax:45},
-  pipXocFontSize:{label:'Cỡ chữ Ổ GÀ PiP (px)',min:12,max:40,step:1,default:22,safeMin:10,safeMax:45},
-  pipGpsFontSize:{label:'Cỡ chữ GPS PiP (px)',min:12,max:36,step:1,default:19,safeMin:10,safeMax:44},
-  maxGa:{label:'Ngưỡng GA (G)',min:0.05,max:0.50,step:0.01,default:0.2,safeMin:0.05,safeMax:0.70},
-  maxPhanh:{label:'Ngưỡng PHANH (G)',min:0.05,max:0.55,step:0.01,default:0.224,safeMin:0.05,safeMax:0.70},
-  maxCua:{label:'Ngưỡng VÀO CUA (G)',min:0.05,max:0.50,step:0.01,default:0.2,safeMin:0.05,safeMax:0.70},
-  potholeThreshold:{label:'Ngưỡng Ổ GÀ (G)',min:0.08,max:0.65,step:0.01,default:0.24,safeMin:0.08,safeMax:0.70},
-  maxJerk:{label:'Ngưỡng LẠNG LÁCH (G/s)',min:0.08,max:0.70,step:0.01,default:0.24,safeMin:0.08,safeMax:0.70},
-  startDelay:{label:'Thời gian chuẩn bị (giây)',min:1,max:5,step:0.5,default:1.5,safeMin:0.5,safeMax:10},
-  scoreRecovery:{label:'Hồi phục điểm (đ/s)',min:1,max:20,step:1,default:3,safeMin:0.1,safeMax:30},
-  peakHoldTime:{label:'Giữ giá trị cao nhất (giây)',min:0,max:5,step:0.5,default:1.5,safeMin:0,safeMax:10},
-  alertHoldTime:{label:'Giữ cảnh báo (giây)',min:0.5,max:8,step:0.5,default:3,safeMin:0.1,safeMax:12},
-  scoreFontSize:{label:'Cỡ chữ điểm di chuyển (px)',min:22,max:60,step:1,default:32,safeMin:16,safeMax:78},
-  cupSize:{label:'Đường kính cốc G (px)',min:100,max:190,step:2,default:176,safeMin:70,safeMax:230},
-  barHeight:{label:'Chiều cao bốn thanh chỉ số (px)',min:10,max:44,step:1,default:38,safeMin:6,safeMax:54},
-  barFontSize:{label:'Cỡ chữ tên thanh (px)',min:10,max:18,step:0.5,default:12.5,safeMin:8,safeMax:24}
+  comfortLevel: {label:'Độ nhạy đánh giá',min:20,max:100,step:5,default:60},
+  volumePercent:{label:'Âm lượng cảnh báo',min:10,max:100,step:5,default:70},
+  speedFontSize:{label:'Cỡ chữ tốc độ',min:32,max:100,step:2,default:64},
+  gpsFallbackSeconds:{label:'Thời gian ước tính mất GPS (giây)',min:0,max:3,step:0.5,default:2},
+  pipSpeedFontSize:{label:'Cỡ chữ TỐC ĐỘ PiP (px)',min:24,max:70,step:1,default:44},
+  pipGaFontSize:{label:'Cỡ chữ GA PiP (px)',min:12,max:40,step:1,default:22},
+  pipPhanhFontSize:{label:'Cỡ chữ PHANH PiP (px)',min:12,max:40,step:1,default:22},
+  pipCuaFontSize:{label:'Cỡ chữ CUA PiP (px)',min:12,max:40,step:1,default:22},
+  pipXocFontSize:{label:'Cỡ chữ Ổ GÀ PiP (px)',min:12,max:40,step:1,default:22},
+  pipGpsFontSize:{label:'Cỡ chữ GPS PiP (px)',min:12,max:36,step:1,default:19},
+  maxGa:{label:'Ngưỡng GA (G)',min:0.05,max:0.50,step:0.01,default:0.2},
+  maxPhanh:{label:'Ngưỡng PHANH (G)',min:0.05,max:0.55,step:0.01,default:0.224},
+  maxCua:{label:'Ngưỡng VÀO CUA (G)',min:0.05,max:0.50,step:0.01,default:0.2},
+  potholeThreshold:{label:'Ngưỡng Ổ GÀ (G)',min:0.08,max:0.65,step:0.01,default:0.24},
+  maxJerk:{label:'Ngưỡng LẠNG LÁCH (G/s)',min:0.08,max:0.70,step:0.01,default:0.24},
+  startDelay:{label:'Thời gian chuẩn bị (giây)',min:1,max:5,step:0.5,default:1.5},
+  scoreRecovery:{label:'Hồi phục điểm (đ/s)',min:1,max:20,step:1,default:3},
+  peakHoldTime:{label:'Giữ giá trị cao nhất (giây)',min:0,max:5,step:0.5,default:1.5},
+  alertHoldTime:{label:'Giữ cảnh báo (giây)',min:0.5,max:8,step:0.5,default:3},
+  scoreFontSize:{label:'Cỡ chữ điểm di chuyển (px)',min:22,max:60,step:1,default:32},
+  cupSize:{label:'Đường kính cốc G (px)',min:100,max:190,step:2,default:176},
+  barHeight:{label:'Chiều cao bốn thanh chỉ số (px)',min:10,max:44,step:1,default:38},
+  barFontSize:{label:'Cỡ chữ tên thanh (px)',min:10,max:18,step:0.5,default:12.5}
 });
 const NUMERIC_OVERRIDE_KEY='smoodri_numeric_limits_v1';
 const NUMERIC_RANGES=Object.fromEntries(Object.entries(NUMERIC_BASE).map(([key,v])=>[key,{...v}]));
@@ -79,7 +80,12 @@ function rangeValid(key, candidate) {
   const base=NUMERIC_BASE[key];
   if(!base || !candidate) return false;
   const {min,max,step,default:defaultValue}=candidate;
-  return [min,max,step,defaultValue].every(Number.isFinite) && min>=base.safeMin && max<=base.safeMax && min<max && step>0 && step<=max-min && defaultValue>=min && defaultValue<=max;
+  // Không có safeMin/safeMax: người dùng chủ động quyết định MIN và MAX.
+  // Giữ các điều kiện bắt buộc để thanh trượt hoạt động chính xác.
+  const span=max-min;
+  return [min,max,step,defaultValue].every(Number.isFinite)
+    && min<max && Number.isFinite(span) && step>0 && step<=span
+    && Number.isFinite(span/step) && defaultValue>=min && defaultValue<=max;
 }
 function loadNumericLimits() {
   try {
@@ -1046,16 +1052,16 @@ function initRangeEditor(){
   const inputs=['rangeEditMin','rangeEditMax','rangeEditStep','rangeEditDefault'];
   const msg=$('rangeEditMessage');
   function display(){
-    const r=NUMERIC_RANGES[select.value], b=NUMERIC_BASE[select.value];
+    const r=NUMERIC_RANGES[select.value];
     inputs.forEach((id,i)=>$(id).value=String(r[['min','max','step','default'][i]]));
-    msg.textContent=`Giới hạn bảo vệ: ${b.safeMin} đến ${b.safeMax}. Thay đổi sẽ tự lưu sau khi rời ô.`;
+    msg.textContent='Không có giới hạn MIN/MAX ẩn. Chỉ lưu khi bốn giá trị hợp lệ; có thể khôi phục mặc định bất kỳ lúc nào.';
     msg.dataset.error='false';
   }
   function persist(){
     const key=select.value;
     const candidate={...NUMERIC_RANGES[key],min:Number($('rangeEditMin').value),max:Number($('rangeEditMax').value),step:Number($('rangeEditStep').value),default:Number($('rangeEditDefault').value)};
     if(inputs.some(id=>$(id).value.trim()==='') || !rangeValid(key,candidate)){
-      msg.textContent='Giá trị chưa hợp lệ. Cần MIN < MAX, STEP > 0, DEFAULT trong phạm vi và không vượt giới hạn bảo vệ.';
+      msg.textContent='Giá trị chưa hợp lệ: cần MIN < MAX, STEP > 0 và không lớn hơn (MAX−MIN), DEFAULT trong [MIN, MAX].';
       msg.dataset.error='true';return;
     }
     Object.assign(NUMERIC_RANGES[key],candidate);

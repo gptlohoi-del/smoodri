@@ -1,11 +1,12 @@
 # SmooDri — APK native PiP + Foreground Service + OTA web
 
-**Bản hợp nhất 1.0.3:** Phiên bản này kết hợp mã web One View, cài đặt chung/chỉnh trực tiếp, OTA qua GitHub Pages và phần Android native PiP/Foreground Service. Không thay thế folder `android` bằng một bản OTA web cũ không có PiP.
+**Bản hợp nhất 1.0.4:** Phiên bản này kết hợp mã web One View, cài đặt chung/chỉnh trực tiếp, OTA qua GitHub Pages và phần Android native PiP/Foreground Service. Không thay thế folder `android` bằng một bản OTA web cũ không có PiP.
 
-- APK `SmooDri-v1.0.3-debug.apk` được tạo khi chạy `.github/workflows/build-apk.yml` (nếu build thành công).
+- APK `SmooDri-v1.0.4-debug.apk` được tạo khi chạy `.github/workflows/build-apk.yml` (nếu build thành công).
 - Cập nhật giao diện web: `.github/workflows/deploy-web-ota.yml` → Pages.
 - PiP native: `MainActivity.java`, `DriveMonitorService.java`, `NativePipView.java`, `AndroidManifest.xml`.
-- **Mới 1.0.3:** PiP có 6 cỡ chữ độc lập (Tốc độ, GA, Phanh, Cua, Ổ gà, GPS); bỏ Điểm chuyến đi tích lũy trên Web và PiP, giữ Điểm hiện tại ở One View.
+- **Mới 1.0.4:** Bỏ giới hạn MIN/MAX ẩn trong CÀI ĐẶT NÂNG CAO (23 thông số số); Android native nhận cỡ chữ PiP lớn hơn ngưỡng cũ. Khôi phục cấu hình gốc vẫn hoạt động.
+- **Từ 1.0.3:** PiP có 6 cỡ chữ độc lập (Tốc độ, GA, Phanh, Cua, Ổ gà, GPS); bỏ Điểm chuyến đi tích lũy trên Web và PiP, giữ Điểm hiện tại ở One View.
 - Cách sử dụng và kiểm tra: `HUONG_DAN_PIP_OTA_HOP_NHAT.md`.
 
 ---

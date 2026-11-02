@@ -40,5 +40,5 @@ class PiPIndependentFonts(unittest.TestCase):
         self.assertIn('ĐIỂM HIỆN TẠI',html)
     def test_apk_version_bumped(self):
         gradle=(ROOT/'android/app/build.gradle').read_text()
-        self.assertIn('versionCode 4',gradle)
-        self.assertIn("versionName '1.0.3'",gradle)
+        self.assertIn('versionCode 5',gradle)
+        self.assertIn("versionName '1.0.4'",gradle)

@@ -1,0 +1,21 @@
+SMOODRI v1.0.4 — BO GIOI HAN BAO VE O SETTING
+
+1. Trong CAI DAT CHUNG -> GIOI HAN THONG SO, chon thong so bat ky, co the nhap MIN / MAX / STEP / DEFAULT khong bi khoa boi safeMin/safeMax.
+2. Vi du: Co chu PHANH PiP, MIN=12, MAX=100, STEP=1, DEFAULT=22. Sau khi roi khoi o nhap, gia tri moi duoc tu luu.
+3. Ung dung van kiem tra so huu han, MIN < MAX, STEP > 0 va STEP <= MAX-MIN, DEFAULT trong [MIN, MAX].
+4. Bam 'Mac dinh muc nay' de khoi phuc gioi han thong so dang chon, hoac 'Mac dinh tat ca' de khoi phuc tat ca gioi han.
+5. Luu y: co chu qua lon co the bi tu co lai cho vua cot PiP. Day la gioi han khong gian hien thi, khong phai gioi han MIN/MAX. Cac thong so do phi ly co the lam ket qua khong dang tin cay.
+6. Am luong Android ve mat thiet bi chi ho tro 0..100%; doi MAX vuot 100 khong the tao am luong thuc > 100%.
+7. PiP Android 12+: thu dung hai ngon tay chum/xoe (pinch-to-zoom), hoac nhan hai lan vao PiP de chuyen kich co. Android, khong phai app, quyet dinh kich co PiP cho phep. Lua chon 16:9 / 4:3 / 1:1 chi dieu khien ty le ngang-cao, khong phai chieu rong/cao tuy y.
+8. Quan trong: vi da sua Android native DriveMonitorService.java, can build va cai APK v1.0.4 moi. OTA web khong thay the duoc file Java.
+
+FILE CAN THAY:
+- app.js
+- index.html
+- android/app/src/main/java/org/smoodri/app/DriveMonitorService.java
+- android/app/build.gradle
+
+File bo sung (neu muon):
+- tests/test_unrestricted_ranges.py
+- tests/test_pip_independent_fonts.py (cap nhat version)
+- HUONG_DAN_BO_GIOI_HAN_V1_0_4.txt

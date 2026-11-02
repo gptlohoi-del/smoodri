@@ -277,7 +277,7 @@
 
       <div class="section-divider">6. Cửa sổ PiP trên Android / App Hub</div>
       <div class="setting-group">
-        <div class="setting-hint">Chỉnh giao diện PiP native của APK SmooDri (hoặc App Hub nếu có hỗ trợ). Cần nhấn BẮT ĐẦU rồi nhấn nút PiP hoặc Home. Kích thước cửa sổ do Android quyết định; trên web/PWA không có PiP native.</div>
+        <div class="setting-hint">Chỉnh giao diện PiP native của APK SmooDri (hoặc App Hub nếu có hỗ trợ). Cần nhấn BẮT ĐẦU rồi nhấn nút PiP hoặc Home. Kích thước PiP do Android quyết định: trên Android 12 trở lên có thể thử chụm/xòe hai ngón để thu phóng hoặc chạm hai lần để chuyển kích thước. Ứng dụng chỉ chọn tỷ lệ khung; trên web/PWA không có PiP native.</div>
         <div class="setting-label"><label for="selPipRatio">Tỷ lệ cửa sổ</label>
           <select id="selPipRatio"><option value="16:9">16:9 — Ngang</option><option value="4:3">4:3 — Cân đối</option><option value="1:1">1:1 — Vuông</option></select>
         </div>
@@ -365,7 +365,7 @@
       <details id="rangeAdvanced" class="advanced-settings">
         <summary>🔧 GIỚI HẠN THÔNG SỐ (MIN / MAX / STEP / DEFAULT)</summary>
         <div class="advanced-inner">
-          <p class="setting-hint">Điều chỉnh giới hạn thanh trượt trên điện thoại. Các thông số đo và cảnh báo có giới hạn bảo vệ. Giá trị hợp lệ tự lưu khi bạn rời ô nhập. Mục này không thay đổi dữ liệu chuyến đi.</p>
+          <p class="setting-hint">Điều chỉnh giới hạn thanh trượt trên điện thoại. Không có giới hạn MIN/MAX ẩn. Chỉ nhập các số hợp lệ; thông số quá lớn có thể khiến màn hình khó đọc hoặc kết quả đo không còn hữu ích. Giá trị hợp lệ tự lưu khi bạn rời ô nhập. Mục này không thay đổi dữ liệu chuyến đi.</p>
           <label class="range-advanced-field" for="rangeConfigTarget">Chọn thông số
             <select id="rangeConfigTarget"></select>
           </label>
@@ -421,8 +421,8 @@
         <h4>1. Theo dõi chuyến đi</h4><p>Gắn cố định điện thoại, bật quyền cảm biến/GPS cần thiết, nhấn BẮT ĐẦU và đợi cân chỉnh. Các chỉ số chỉ mang tính tham khảo; không sử dụng để quyết định thao tác lái xe.</p>
         <h4>2. Cài đặt chung</h4><p>Nhấn ⚙️ để mở popup CÀI ĐẶT CHUNG. Mỗi thông số số có nút −, thanh trượt ngắn và nút +. Chạm nhẹ hoặc vuốt dọc trên thanh sẽ không làm nhảy giá trị; kéo ngang có chủ ý để chỉnh. Thay đổi được lưu tự động. Nhấn ĐÓNG hoặc chạm ngoài popup để thoát.</p>
         <h4>3. Chỉnh giao diện trực tiếp</h4><p>Khi đã DỪNG theo dõi, mở CÀI ĐẶT CHUNG và nhấn CHỈNH GIAO DIỆN TRỰC TIẾP. Chạm vào điểm, tốc độ, cốc G hoặc thanh chỉ số. Thanh điều khiển nhỏ xuất hiện ở phía đối diện, để bạn nhìn rõ phần đang chỉnh. Chạm XONG để trở lại giao diện bình thường.</p>
-        <h4>4. Giới hạn MIN/MAX/STEP/DEFAULT</h4><p>Trong CÀI ĐẶT CHUNG, mở mục GIỚI HẠN THÔNG SỐ. Chọn một thông số và nhập các giá trị mới. Hệ thống chỉ nhận giá trị hợp lệ trong giới hạn bảo vệ. Nút Mặc định giúp khôi phục giới hạn gốc mà không xóa dữ liệu chuyến đi.</p>
-        <h4>5. PiP và cập nhật</h4><p>Từ CÀI ĐẶT CHUNG có thể chỉnh cỡ chữ riêng của TỐC ĐỘ, GA, PHANH, CUA, Ổ GÀ, GPS trong PiP. PiP không có điểm chuyến đi. Khi chạy trong APK SmooDri có hỗ trợ native, các cài đặt PiP được gửi đến dịch vụ theo dõi Android. Trên web/PWA chỉ hiển thị bản xem trước. Kích thước cửa sổ PiP thực tế do Android kiểm soát. Những thay đổi HTML/CSS/JS có thể nhận qua OTA web khi bản APK hỗ trợ.</p>
+        <h4>4. Giới hạn MIN/MAX/STEP/DEFAULT</h4><p>Trong CÀI ĐẶT CHUNG, mở mục GIỚI HẠN THÔNG SỐ. Chọn một thông số và nhập các giá trị mới. Không có giới hạn MIN/MAX ẩn, nhưng MIN phải nhỏ hơn MAX, STEP phải dương và DEFAULT nằm trong khoảng MIN–MAX. Giá trị bất hợp lý có thể làm méo bố cục hoặc giảm độ tin cậy của chỉ số. Nút Mặc định khôi phục cấu hình gốc mà không xóa dữ liệu.</p>
+        <h4>5. PiP và cập nhật</h4><p>Từ CÀI ĐẶT CHUNG có thể chỉnh cỡ chữ riêng của TỐC ĐỘ, GA, PHANH, CUA, Ổ GÀ, GPS trong PiP. PiP không có điểm chuyến đi. Khi chạy trong APK SmooDri có hỗ trợ native, các cài đặt PiP được gửi đến dịch vụ theo dõi Android. Trên web/PWA chỉ hiển thị bản xem trước. Trên Android 12 trở lên, có thể thử dùng hai ngón để thay đổi kích thước PiP; không thể nhập chiều rộng/cao tùy ý trong ứng dụng. Chữ quá lớn có thể tự co lại để vừa cửa sổ. Những thay đổi HTML/CSS/JS có thể nhận qua OTA web khi bản APK hỗ trợ.</p>
         <h4>6. Cập nhật OTA</h4><p>Ứng dụng tự kiểm tra khi mở có Internet. Khi có phiên bản web mới, chương trình tải vào bộ nhớ đệm và tự kích hoạt khi chưa theo dõi chuyến đi. Nếu đang đo, bản mới sẽ được áp dụng khi dừng hoặc mở ứng dụng lần sau. Các chức năng Android gốc như quyền, Foreground Service, PiP native, icon APK vẫn cần APK mới. Có thể nhấn KIỂM TRA CẬP NHẬT trong CÀI ĐẶT CHUNG để kiểm tra thủ công.</p>
         <h4>6. Lưu ý an toàn</h4><p>Chỉ thao tác cài đặt khi xe đã đỗ ở nơi an toàn. Nếu giao diện quá chật, giảm cỡ chữ hoặc chiều cao thanh để bảo đảm One View.</p>
       </div>

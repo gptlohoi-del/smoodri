@@ -183,6 +183,15 @@ public final class DriveMonitorService extends Service implements SensorEventLis
         double v = configuration.optDouble(name, fallback);
         return Double.isFinite(v) ? v : fallback;
     }
+    /** Giá trị cỡ chữ PiP không bị chặn bởi MAX ẩn trong Android.
+     * Chỉ yêu cầu kích thước dương, hữu hạn và biểu diễn được bằng int.
+     * Khi chữ vượt chiều rộng PiP, NativePipView tự co để vừa chỗ.
+     */
+    private int pipTextSize(String name, int fallback) {
+        double requested=setting(name,fallback);
+        if (!(requested > 0)) return fallback;
+        return (int)Math.min(Integer.MAX_VALUE, Math.round(requested));
+    }
     private String color(String name, String fallback) {
         String s = configuration.optString(name, fallback);
         return s.matches("#[0-9a-fA-F]{6}") ? s : fallback;
@@ -207,7 +216,7 @@ public final class DriveMonitorService extends Service implements SensorEventLis
         if (!calibrated) {
             calibrationWindow.addLast(ag.clone());
             while (calibrationWindow.size() > 60) calibrationWindow.removeFirst();
-            double delay = clamp(setting("startDelay", 1.5), 1, 5) * 1000;
+            double delay = Math.max(0, setting("startDelay", 1.5)) * 1000;
             if (now-calibrationStart >= delay && calibrationWindow.size() >= 6) {
                 double[] avg = new double[3];
                 for (double[] xyz : calibrationWindow) for (int i=0; i<3; i++) avg[i]+=xyz[i];
@@ -296,12 +305,12 @@ public final class DriveMonitorService extends Service implements SensorEventLis
         long now=SystemClock.elapsedRealtime();
         String ratio=configuration.optString("pipRatio","16:9");
         if (!ratio.equals("16:9") && !ratio.equals("4:3") && !ratio.equals("1:1")) ratio="16:9";
-        int speedFont=(int)clamp(setting("pipSpeedFontSize",44),16,84);
-        int gaFont=(int)clamp(setting("pipGaFontSize",22),10,45);
-        int phanhFont=(int)clamp(setting("pipPhanhFontSize",22),10,45);
-        int cuaFont=(int)clamp(setting("pipCuaFontSize",22),10,45);
-        int xocFont=(int)clamp(setting("pipXocFontSize",22),10,45);
-        int gpsFont=(int)clamp(setting("pipGpsFontSize",19),10,44);
+        int speedFont=pipTextSize("pipSpeedFontSize",44);
+        int gaFont=pipTextSize("pipGaFontSize",22);
+        int phanhFont=pipTextSize("pipPhanhFontSize",22);
+        int cuaFont=pipTextSize("pipCuaFontSize",22);
+        int xocFont=pipTextSize("pipXocFontSize",22);
+        int gpsFont=pipTextSize("pipGpsFontSize",19);
         int weight=(int)clamp(setting("pipFontWeight",700),500,800);
         lastSnapshot=new Snapshot(true,calibrated,ga,phanh,cua,xoc,speed,accuracy,hz,
           lastGps==0?Long.MAX_VALUE:now-lastGps, lastSensor==0?Long.MAX_VALUE:now-lastSensor,
