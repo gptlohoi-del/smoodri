@@ -1,0 +1,33 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'org.smoodri.app'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'org.smoodri.app'
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName '1.0.0'
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+// Mỗi lần build, đưa nội dung PWA mới nhất từ thư mục gốc vào APK.
+// Các nội dung OTA từ GitHub Pages vẫn độc lập với phiên bản APK.
+def syncPwa = tasks.register('syncPwa', Sync) {
+    from(rootProject.file('..')) {
+        include 'index.html', 'style.css', 'app.js', 'manifest.json', 'sw.js'
+        include 'icons/**'
+    }
+    into file('src/main/assets/web')
+}
+tasks.matching { it.name == 'preBuild' }.configureEach {
+    dependsOn syncPwa
+}
