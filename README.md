@@ -1,3 +1,14 @@
+# SmooDri — APK native PiP + Foreground Service + OTA web
+
+**Bản hợp nhất 1.0.2:** Phiên bản này kết hợp mã web One View, cài đặt chung/chỉnh trực tiếp, OTA qua GitHub Pages và phần Android native PiP/Foreground Service. Không thay thế folder `android` bằng một bản OTA web cũ không có PiP.
+
+- APK `SmooDri-v1.0.2-debug.apk` được tạo khi chạy `.github/workflows/build-apk.yml` (nếu build thành công).
+- Cập nhật giao diện web: `.github/workflows/deploy-web-ota.yml` → Pages.
+- PiP native: `MainActivity.java`, `DriveMonitorService.java`, `NativePipView.java`, `AndroidManifest.xml`.
+- Cách sử dụng và kiểm tra: `HUONG_DAN_PIP_OTA_HOP_NHAT.md`.
+
+---
+
 # SmooDri 8.0 — Trợ lý lái xe êm ái
 
 ## Cài đặt / cập nhật

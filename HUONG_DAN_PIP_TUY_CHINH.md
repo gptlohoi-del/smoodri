@@ -1,7 +1,14 @@
-# Tùy chỉnh cửa sổ PiP từ SmooDri
+# HƯỚNG DẪN CÀI ĐẶT PiP — SMOODRI
 
-Mở CÀI ĐẶT → 6. Cửa sổ PiP trong App Hub. Tỷ lệ 16:9, 4:3 hoặc 1:1; chọn thông số; cỡ chữ; độ đậm; màu nền và màu chữ. Thay đổi lưu vào `smoodri_cfg_v8`, được bridge trong App Hub chuyển cho giao diện PiP.
+Trong APK SmooDri, vào **CÀI ĐẶT CHUNG → PiP trên Android / App Hub**:
 
-Tốc độ GPS xuất phát từ Web SmooDri. Khi ứng dụng bị Android hạn chế WebView chạy nền, dữ liệu tốc độ không được làm mới; PiP hiển thị `--` sau 3,2 giây thay vì giữ số cũ. Điểm và bốn chỉ số PiP thuộc dịch vụ native Android, có thể khác số trong Web. Cấu hình PiP không thay đổi ngưỡng cảm biến native.
+- Chọn tỷ lệ 16:9 / 4:3 / 1:1, cỡ chữ điểm chính, độ đậm, màu nền và chữ.
+- Chọn thông số hiện trong PiP: điểm, tốc độ, GA, PHANH, VÀO CUA, Ổ GÀ và GPS.
+- Thay đổi được lưu và gửi sang dịch vụ native khi đã BẮT ĐẦU theo dõi.
+- Khi nhấn Home hoặc nút `▣ PiP`, cửa sổ native hiển thị giá trị cảm biến/GPS của Foreground Service. Điểm PiP là phép tính native độc lập; có thể khác nhẹ so với giao diện web.
+- Nếu không đổi được tỷ lệ, kiểm tra giới hạn PiP của Android và quyền quản trị thiết bị.
+- Nếu chỉ mở bằng trình duyệt hoặc cài PWA, không có nút native PiP.
 
-Chỉ thay tỷ lệ PiP đòi một lần build/cài APK App Hub mới, vì bridge Android hiện tại cố định 16:9. Những chỉnh sửa giao diện sau đó có thể theo OTA. Chưa kiểm thử trên điện thoại.
+Muốn dùng PiP phải cài bản APK chứa ba file `MainActivity.java`, `DriveMonitorService.java`, `NativePipView.java` và Manifest khai báo PiP. Không thể chỉ OTA web để bổ sung phần native này.
+
+Xem [`HUONG_DAN_PIP_OTA_HOP_NHAT.md`](HUONG_DAN_PIP_OTA_HOP_NHAT.md).

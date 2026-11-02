@@ -16,14 +16,14 @@
 5. Kiểm tra `https://gptlohoi-del.github.io/smoodri/version.json` có phiên bản Git SHA mới, không phải `builtin`.
 6. Trên điện thoại, mở SmooDri khi kết nối Internet. Mục CÀI ĐẶT CHUNG có trạng thái **CẬP NHẬT NỘI DUNG OTA** và nút **KIỂM TRA CẬP NHẬT**.
 
-## 3. Một lần APK mới để cải thiện offline
+## 3. APK mới chứa cả PiP và Foreground Service
 
-`MainActivity.java` có sửa phần xử lý WebView offline, giúp ưu tiên bản đã cache qua OTA thay vì luôn ép về web đóng gói trong APK. Để Android nhận thay đổi native này, cần build/cài APK một lần. Các lần sửa **chỉ web** về sau không cần cài APK.
+**Bản hợp nhất hiện tại có đủ ba file native**: `MainActivity.java`, `DriveMonitorService.java`, `NativePipView.java`, cùng quyền PiP và Foreground Service trong Manifest. Ngoài OTA, APK còn ưu tiên bản web đã cache trước khi dùng giao diện đóng gói trong APK khi ngoại tuyến.
 
-- `android/app/build.gradle` được tăng `versionCode=2`, `versionName='1.0.1'` để build mới.
-- `Build SmooDri APK` sẽ phát hành artifact `SmooDri-v1.0.1-debug.apk`.
-- Nếu các APK debug trước đây được ký bằng khóa khác nhau, Android có thể **không cho cài đè**. Nên chuyển sang khóa ký Release JKS cố định trước khi dùng lâu dài. Tránh gỡ ứng dụng nếu chưa sao lưu cài đặt.
-- Repo nguồn được cung cấp ở đây chỉ có `MainActivity.java` cơ bản, **không chứa Foreground Service và PiP native** trong mã Android. Bộ OTA này không bổ sung hay thay thế các thành phần native đó. Nếu máy đang dùng bản Android có PiP native khác, không thay các file native của bản ấy bằng MainActivity này mà cần gộp thay đổi offline vào đúng phiên bản đó.
+- `android/app/build.gradle`: `versionCode 3`, `versionName '1.0.2'`.
+- GitHub Actions tạo artifact tên `SmooDri-v1.0.2-debug.apk` khi build thành công.
+- Phải cài APK mới một lần để có PiP/Foreground Service; OTA web không thể thêm mã native vào bản APK cũ.
+- Vì APK Debug có thể không cùng chữ ký giữa các lần build, việc cài đè không được bảo đảm. Nên chuyển sang ký Release JKS cố định trước khi phát hành lâu dài.
 
 ## 4. Quy trình sử dụng lâu dài
 

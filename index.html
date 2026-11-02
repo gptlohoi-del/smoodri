@@ -25,6 +25,7 @@
         <button id="btnQuickCalib" class="btn-icon" title="Đặt lại tâm 0G ngay lập tức">
           🎯 Đặt lại 0G
         </button>
+        <button id="btnNativePip" class="btn-native-pip hidden" type="button" title="Mở cửa sổ PiP trên Android">▣ PiP</button>
         <button id="btnSettings" class="btn-icon" title="Mở cài đặt">
           ⚙️
         </button>
@@ -274,9 +275,9 @@
         </div>
       </div>
 
-      <div class="section-divider">6. Cửa sổ PiP trong App Hub</div>
+      <div class="section-divider">6. Cửa sổ PiP trên Android / App Hub</div>
       <div class="setting-group">
-        <div class="setting-hint">Chỉnh hình thức cửa sổ thu nhỏ khi mở SmooDri trong APK App Hub. Kích thước thực tế do Android quyết định. Web SmooDri dùng riêng không mở PiP native.</div>
+        <div class="setting-hint">Chỉnh giao diện PiP native của APK SmooDri (hoặc App Hub nếu có hỗ trợ). Cần nhấn BẮT ĐẦU rồi nhấn nút PiP hoặc Home. Kích thước cửa sổ do Android quyết định; trên web/PWA không có PiP native.</div>
         <div class="setting-label"><label for="selPipRatio">Tỷ lệ cửa sổ</label>
           <select id="selPipRatio"><option value="16:9">16:9 — Ngang</option><option value="4:3">4:3 — Cân đối</option><option value="1:1">1:1 — Vuông</option></select>
         </div>
@@ -290,7 +291,7 @@
         <div class="setting-label"><span>Thông tin xuất hiện trong PiP</span></div>
         <div class="metric-choices" id="pipMetricChoices">
           <label><input type="checkbox" data-pip-visible="score" checked /> Điểm êm ái (native)</label>
-          <label><input type="checkbox" data-pip-visible="speed" checked /> Tốc độ GPS (web)</label>
+          <label><input type="checkbox" data-pip-visible="speed" checked /> Tốc độ GPS (native)</label>
           <label><input type="checkbox" data-pip-visible="ga" checked /> GA</label>
           <label><input type="checkbox" data-pip-visible="phanh" checked /> PHANH</label>
           <label><input type="checkbox" data-pip-visible="cua" checked /> VÀO CUA</label>
@@ -411,7 +412,7 @@
         <h4>2. Cài đặt chung</h4><p>Nhấn ⚙️ để mở popup CÀI ĐẶT CHUNG. Mỗi thông số số có nút −, thanh trượt ngắn và nút +. Chạm nhẹ hoặc vuốt dọc trên thanh sẽ không làm nhảy giá trị; kéo ngang có chủ ý để chỉnh. Thay đổi được lưu tự động. Nhấn ĐÓNG hoặc chạm ngoài popup để thoát.</p>
         <h4>3. Chỉnh giao diện trực tiếp</h4><p>Khi đã DỪNG theo dõi, mở CÀI ĐẶT CHUNG và nhấn CHỈNH GIAO DIỆN TRỰC TIẾP. Chạm vào điểm, tốc độ, cốc G hoặc thanh chỉ số. Thanh điều khiển nhỏ xuất hiện ở phía đối diện, để bạn nhìn rõ phần đang chỉnh. Chạm XONG để trở lại giao diện bình thường.</p>
         <h4>4. Giới hạn MIN/MAX/STEP/DEFAULT</h4><p>Trong CÀI ĐẶT CHUNG, mở mục GIỚI HẠN THÔNG SỐ. Chọn một thông số và nhập các giá trị mới. Hệ thống chỉ nhận giá trị hợp lệ trong giới hạn bảo vệ. Nút Mặc định giúp khôi phục giới hạn gốc mà không xóa dữ liệu chuyến đi.</p>
-        <h4>5. PiP và cập nhật</h4><p>Cài đặt PiP web chỉ ảnh hưởng phần xem trước và dữ liệu cấu hình gửi đến App Hub/native khi cầu nối tương thích. Kích thước cửa sổ PiP thực tế do Android kiểm soát. Những thay đổi HTML/CSS/JS có thể nhận qua OTA web khi bản APK hỗ trợ.</p>
+        <h4>5. PiP và cập nhật</h4><p>Khi chạy trong APK SmooDri có hỗ trợ native, các cài đặt PiP được gửi đến dịch vụ theo dõi Android. Trên web/PWA chỉ hiển thị bản xem trước. Kích thước cửa sổ PiP thực tế do Android kiểm soát. Những thay đổi HTML/CSS/JS có thể nhận qua OTA web khi bản APK hỗ trợ.</p>
         <h4>6. Cập nhật OTA</h4><p>Ứng dụng tự kiểm tra khi mở có Internet. Khi có phiên bản web mới, chương trình tải vào bộ nhớ đệm và tự kích hoạt khi chưa theo dõi chuyến đi. Nếu đang đo, bản mới sẽ được áp dụng khi dừng hoặc mở ứng dụng lần sau. Các chức năng Android gốc như quyền, Foreground Service, PiP native, icon APK vẫn cần APK mới. Có thể nhấn KIỂM TRA CẬP NHẬT trong CÀI ĐẶT CHUNG để kiểm tra thủ công.</p>
         <h4>6. Lưu ý an toàn</h4><p>Chỉ thao tác cài đặt khi xe đã đỗ ở nơi an toàn. Nếu giao diện quá chật, giảm cỡ chữ hoặc chiều cao thanh để bảo đảm One View.</p>
       </div>

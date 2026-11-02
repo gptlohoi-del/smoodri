@@ -5,6 +5,46 @@ const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 const finite = (v, fallback) => Number.isFinite(Number(v)) ? Number(v) : fallback;
 const smoothFactor = (dt, tau) => 1 - Math.exp(-clamp(dt, 0, 0.3) / tau);
 const STORAGE_KEY = 'smoodri_cfg_v8';
+const IS_NATIVE_ANDROID = !!(window.SmooDriAndroid && typeof window.SmooDriAndroid.start === 'function');
+window.SmooDriNative = {
+  onStarted: null,
+  onNativeSample(sample) {
+    if (!isRunning || !sample || !sample.ag) return;
+    handleMotion({ accelerationIncludingGravity: sample.ag, acceleration: sample.lin || null });
+  },
+  onMonitorStopped() {
+    if (isRunning) stopApp('ĐÃ DỪNG DỊCH VỤ', 'Dịch vụ Android đã ngừng theo dõi');
+  }
+};
+function nativeStart() {
+  if (!IS_NATIVE_ANDROID) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    let resolved = false;
+    const finish = (ok, reason) => {
+      if (resolved) return;
+      resolved = true;
+      clearTimeout(timeout);
+      window.SmooDriNative.onStarted = null;
+      if (!ok) {
+        setBanner('KHÔNG KHỞI ĐỘNG ĐƯỢC', reason || 'Kiểm tra GPS và quyền của SmooDri', 'warn-100');
+        try { window.SmooDriAndroid.stop(); } catch (_) {}
+      }
+      resolve(Boolean(ok));
+    };
+    // Avoid waiting forever if Android cannot return a permission/service callback.
+    const timeout = setTimeout(() => finish(false, 'Không nhận được phản hồi từ Android'), 45000);
+    window.SmooDriNative.onStarted = finish;
+    try { window.SmooDriAndroid.start(JSON.stringify(config)); }
+    catch (_) { finish(false, 'Lỗi kết nối với dịch vụ Android'); }
+  });
+}
+function syncNativeConfig() {
+  if (IS_NATIVE_ANDROID) {
+    try { window.SmooDriAndroid.updateConfig(JSON.stringify(config)); } catch (_) {}
+  }
+}
+
+
 
 /* BẢNG GIỚI HẠN TẬP TRUNG: có thể chỉnh trực tiếp trong CÀI ĐẶT NÂNG CAO.
    safeMin/safeMax là rào bảo vệ riêng; không thay từ UI. */
@@ -170,7 +210,7 @@ function loadConfig() {
 let config = loadConfig();
 function saveConfig() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-    window.dispatchEvent(new Event('smoodri:pip-config-changed')); }
+    window.dispatchEvent(new Event('smoodri:pip-config-changed')); syncNativeConfig(); }
   catch (_) { /* Trình duyệt có thể chặn lưu trữ; ứng dụng vẫn đo được. */ }
 }
 
@@ -537,6 +577,7 @@ function stopApp(title = 'ĐÃ DỪNG', subtitle = 'Bấm Bắt đầu để đo
   clearTimeout(countdownTimer); countdownTimer = null;
   clearInterval(watchdogTimer); watchdogTimer = null;
   window.removeEventListener('devicemotion', handleMotion);
+  if (IS_NATIVE_ANDROID) { try { window.SmooDriAndroid.stop(); } catch (_) {} }
   stopGps(); renderGpsSpeed();
   if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
   $('btnStart').classList.remove('running');
@@ -545,7 +586,7 @@ function stopApp(title = 'ĐÃ DỪNG', subtitle = 'Bấm Bắt đầu để đo
 }
 async function startApp() {
   if (isRunning) { stopApp(); return; }
-  if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+  if (!IS_NATIVE_ANDROID && typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
     try {
       const permission = await DeviceMotionEvent.requestPermission();
       if (permission !== 'granted') {
@@ -557,6 +598,7 @@ async function startApp() {
       return;
     }
   }
+  if (!(await nativeStart())) return;
   initAudioContext();
   isRunning = true; isCountingDown = true; isCalibrated = false;
   const generation = ++sessionGeneration;
@@ -565,7 +607,7 @@ async function startApp() {
   $('btnStart').classList.add('running');
   $('btnStart').innerHTML = '<span>⏹ DỪNG</span>';
   setBanner('ĐANG CÂN CHỈNH...', `Giữ điện thoại cố định ${config.startDelay.toFixed(1)} giây`, 'warn-70');
-  window.addEventListener('devicemotion', handleMotion);
+  if (!IS_NATIVE_ANDROID) window.addEventListener('devicemotion', handleMotion);
   startGps();
   requestWakeLock();
   countdownTimer = setTimeout(() => {
@@ -789,6 +831,21 @@ $('selSpeedWeight').addEventListener('change', e=>{config.speedWeight=Number(e.t
 $('inpSpeedColor').addEventListener('input', e=>{config.speedColor=e.target.value;speedSettings();saveConfig();});
 $('rngGpsFallback').addEventListener('input', e=>{config.gpsFallbackSeconds=Number(e.target.value);speedSettings();saveConfig();renderGpsSpeed();});
 $('btnStart').addEventListener('click', startApp);
+if (IS_NATIVE_ANDROID) {
+  const nativePipButton = $('btnNativePip');
+  if (nativePipButton) {
+    nativePipButton.classList.remove('hidden');
+    nativePipButton.addEventListener('click', () => {
+      if (!isRunning) {
+        setBanner('CHƯA THEO DÕI', 'Hãy nhấn BẮT ĐẦU trước khi mở PiP.');
+        return;
+      }
+      try { window.SmooDriAndroid.enterPip(); }
+      catch (_) { setBanner('KHÔNG MỞ ĐƯỢC PiP', 'Hãy kiểm tra quyền Hình trong hình của SmooDri.'); }
+    });
+  }
+}
+
 $('btnQuickCalib').addEventListener('click', quickCalibrate);
 $('btnComfortPlus').addEventListener('click', () => setComfortLevel(rangeStep('comfortLevel',1,config.comfortLevel)));
 $('btnComfortMinus').addEventListener('click', () => setComfortLevel(rangeStep('comfortLevel',-1,config.comfortLevel)));

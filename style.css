@@ -887,3 +887,10 @@ body.ui-editing #btnStart,body.ui-editing #btnQuickCalib,body.ui-editing #btnSet
 #otaStatus { font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
 #otaVersion { font-size: 12px; overflow-wrap: anywhere; }
 #btnCheckOta { min-height: 44px; width: 100%; }
+
+/* Nút mở PiP native: chỉ hiện trong APK có bridge; không chiếm chỗ ở bản web/PWA. */
+.btn-native-pip { border:1px solid #5b94b9; border-radius:9px; background:#173a53; color:white;
+  font-weight:800; font-size:12px; padding:7px 9px; cursor:pointer; min-height:36px;
+  white-space:nowrap; flex-shrink:0; }
+.btn-native-pip.hidden {display:none !important;}
+@media (max-width:360px) { .btn-native-pip {font-size:11px;padding:6px 7px;} }
