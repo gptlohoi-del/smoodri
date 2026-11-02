@@ -187,10 +187,14 @@
   <div id="settingsModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
     <div class="modal-box">
       <div class="modal-header">
-        <h3 id="settingsTitle">⚙️ Cài đặt SmooDri</h3>
+        <h3 id="settingsTitle">⚙️ CÀI ĐẶT CHUNG</h3>
         <button id="btnCloseModal" class="btn-icon" type="button">Đóng ✕</button>
       </div>
 
+      <div class="setting-group ui-mode-entry">
+        <button id="btnDirectEdit" type="button" class="btn-option ui-mode-launch">✏️ CHỈNH GIAO DIỆN TRỰC TIẾP</button>
+        <p class="setting-hint">Đóng cửa sổ này, chạm vào điểm chuyến đi, tốc độ, cốc G hoặc thanh chỉ số để xem thay đổi ngay trên One View. Chỉ chỉnh khi đã dừng theo dõi.</p>
+      </div>
       <div class="section-divider">1. Mức độ êm ái</div>
       <div class="setting-group">
         <div class="setting-label"><label for="rngComfort">Độ nhạy đánh giá</label><strong id="lblComfort">60/100</strong></div>
@@ -347,7 +351,62 @@
           <div class="ref-info-box">Các ngưỡng G và G/s là giá trị thử nghiệm có thể tùy chỉnh, không phải mốc bắt buộc của ISO 2631-1 hoặc mức đảm bảo an toàn giao thông. Kết quả còn phụ thuộc loại xe, vị trí đặt máy và chất lượng cảm biến.</div>
         </div>
       </details>
+      <details id="rangeAdvanced" class="advanced-settings">
+        <summary>🔧 GIỚI HẠN THÔNG SỐ (MIN / MAX / STEP / DEFAULT)</summary>
+        <div class="advanced-inner">
+          <p class="setting-hint">Điều chỉnh giới hạn thanh trượt trên điện thoại. Các thông số đo và cảnh báo có giới hạn bảo vệ. Giá trị hợp lệ tự lưu khi bạn rời ô nhập. Mục này không thay đổi dữ liệu chuyến đi.</p>
+          <label class="range-advanced-field" for="rangeConfigTarget">Chọn thông số
+            <select id="rangeConfigTarget"></select>
+          </label>
+          <div class="range-edit-grid">
+            <label>MIN<input id="rangeEditMin" type="number" inputmode="decimal" step="any" /></label>
+            <label>MAX<input id="rangeEditMax" type="number" inputmode="decimal" step="any" /></label>
+            <label>STEP<input id="rangeEditStep" type="number" inputmode="decimal" step="any" /></label>
+            <label>DEFAULT<input id="rangeEditDefault" type="number" inputmode="decimal" step="any" /></label>
+          </div>
+          <p id="rangeEditMessage" class="setting-hint" aria-live="polite"></p>
+          <div class="option-grid-2">
+            <button id="btnResetCurrentRange" class="btn-option" type="button">↺ Mặc định mục này</button>
+            <button id="btnResetAllRanges" class="btn-option" type="button">↺ Mặc định tất cả</button>
+          </div>
+        </div>
+      </details>
+      <button id="btnHelpSmoodri" class="btn-option help-launch" type="button">📖 HƯỚNG DẪN SỬ DỤNG</button>
       <button id="btnResetDefaults" class="btn-reset" type="button">↺ Khôi phục cài đặt mặc định</button>
+    </div>
+  </div>
+  <!-- Chỉnh trực tiếp: bảng nổi nhỏ không che thành phần được chọn -->
+  <div id="uiEditToolbar" class="ui-edit-toolbar" hidden>
+    <span>✏️ CHẾ ĐỘ CHỈNH GIAO DIỆN</span>
+    <button id="btnFinishUiEdit" type="button">XONG ✕</button>
+  </div>
+  <div id="uiEditPanel" class="ui-edit-panel" hidden aria-label="Điều chỉnh trực tiếp">
+    <div class="ui-edit-head"><strong id="uiEditTitle">Chọn thành phần</strong><button id="btnCloseUiPanel" type="button" aria-label="Đóng bảng chỉnh">✕</button></div>
+    <label for="uiEditSetting" class="ui-edit-caption">Thuộc tính cần chỉnh</label>
+    <select id="uiEditSetting"></select>
+    <div class="ui-edit-numeric" id="uiEditNumeric">
+      <button id="uiEditMinus" type="button" aria-label="Giảm">−</button>
+      <input id="uiEditSlider" type="range" aria-label="Giá trị điều chỉnh" />
+      <button id="uiEditPlus" type="button" aria-label="Tăng">+</button>
+      <output id="uiEditValue"></output>
+    </div>
+    <div id="uiEditColorRow" class="ui-edit-color" hidden>
+      <label for="uiEditColor">Màu sắc</label><input id="uiEditColor" type="color" />
+    </div>
+    <div id="uiEditChoiceRow" class="ui-edit-choice" hidden><label for="uiEditChoice">Vị trí ngang</label><select id="uiEditChoice"><option value="left">Trái</option><option value="center">Giữa</option><option value="right">Phải</option></select></div>
+    <p class="ui-edit-note">Kéo ngang trên thanh để chỉnh; vuốt dọc không đổi giá trị. Tự lưu tức thì.</p>
+  </div>
+  <div id="smoodriHelp" class="modal-overlay help-overlay" role="dialog" aria-modal="true" aria-labelledby="smoodriHelpTitle">
+    <div class="modal-box help-box">
+      <div class="modal-header"><h3 id="smoodriHelpTitle">📖 HƯỚNG DẪN SMOODRI</h3><button id="btnCloseHelpSmoodri" class="btn-icon" type="button">ĐÓNG ✕</button></div>
+      <div class="help-content">
+        <h4>1. Theo dõi chuyến đi</h4><p>Gắn cố định điện thoại, bật quyền cảm biến/GPS cần thiết, nhấn BẮT ĐẦU và đợi cân chỉnh. Các chỉ số chỉ mang tính tham khảo; không sử dụng để quyết định thao tác lái xe.</p>
+        <h4>2. Cài đặt chung</h4><p>Nhấn ⚙️ để mở popup CÀI ĐẶT CHUNG. Mỗi thông số số có nút −, thanh trượt ngắn và nút +. Chạm nhẹ hoặc vuốt dọc trên thanh sẽ không làm nhảy giá trị; kéo ngang có chủ ý để chỉnh. Thay đổi được lưu tự động. Nhấn ĐÓNG hoặc chạm ngoài popup để thoát.</p>
+        <h4>3. Chỉnh giao diện trực tiếp</h4><p>Khi đã DỪNG theo dõi, mở CÀI ĐẶT CHUNG và nhấn CHỈNH GIAO DIỆN TRỰC TIẾP. Chạm vào điểm, tốc độ, cốc G hoặc thanh chỉ số. Thanh điều khiển nhỏ xuất hiện ở phía đối diện, để bạn nhìn rõ phần đang chỉnh. Chạm XONG để trở lại giao diện bình thường.</p>
+        <h4>4. Giới hạn MIN/MAX/STEP/DEFAULT</h4><p>Trong CÀI ĐẶT CHUNG, mở mục GIỚI HẠN THÔNG SỐ. Chọn một thông số và nhập các giá trị mới. Hệ thống chỉ nhận giá trị hợp lệ trong giới hạn bảo vệ. Nút Mặc định giúp khôi phục giới hạn gốc mà không xóa dữ liệu chuyến đi.</p>
+        <h4>5. PiP và cập nhật</h4><p>Cài đặt PiP web chỉ ảnh hưởng phần xem trước và dữ liệu cấu hình gửi đến App Hub/native khi cầu nối tương thích. Kích thước cửa sổ PiP thực tế do Android kiểm soát. Những thay đổi HTML/CSS/JS có thể nhận qua OTA web khi bản APK hỗ trợ.</p>
+        <h4>6. Lưu ý an toàn</h4><p>Chỉ thao tác cài đặt khi xe đã đỗ ở nơi an toàn. Nếu giao diện quá chật, giảm cỡ chữ hoặc chiều cao thanh để bảo đảm One View.</p>
+      </div>
     </div>
   </div>
   <script src="./app.js" defer></script>
