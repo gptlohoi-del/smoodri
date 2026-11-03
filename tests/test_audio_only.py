@@ -96,9 +96,34 @@ class AudioOnlyRegression(unittest.TestCase):
 
     def test_version_and_manifest(self):
         gradle=(ROOT/'android/app/build.gradle').read_text()
-        self.assertIn("versionName '1.0.9'",gradle)
-        self.assertIn('result.put("version","1.0.9")',self.activity)
+        self.assertIn("versionName '1.0.10'",gradle)
+        self.assertIn('result.put("version","1.0.10")',self.activity)
         self.assertIn('android:name=".DriveMonitorService"',self.manifest)
+
+
+    def test_mode_static_plays_after_initial_no_data_state(self):
+        # This catches the original bug that the previous mock (state=1) missed.
+        if not shutil.which('javac') or not shutil.which('java'):
+            self.skipTest('Java tooling unavailable')
+        import re as _re
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d)
+            sources={
+                'android/media/AudioAttributes.java': 'package android.media;public class AudioAttributes{public static final int USAGE_MEDIA=1,CONTENT_TYPE_SONIFICATION=1;public static class Builder{public Builder setUsage(int i){return this;}public Builder setContentType(int i){return this;}public AudioAttributes build(){return new AudioAttributes();}}}',
+                'android/media/AudioFormat.java': 'package android.media;public class AudioFormat{public static final int ENCODING_PCM_16BIT=2,CHANNEL_OUT_MONO=4;public static class Builder{public Builder setEncoding(int i){return this;}public Builder setSampleRate(int i){return this;}public Builder setChannelMask(int i){return this;}public AudioFormat build(){return new AudioFormat();}}}',
+                'android/media/AudioTrack.java': 'package android.media;public class AudioTrack{public static final int MODE_STATIC=0,STATE_INITIALIZED=1,STATE_NO_STATIC_DATA=2,PLAYSTATE_PLAYING=3,WRITE_BLOCKING=0,SUCCESS=0;private int state=STATE_NO_STATIC_DATA;public static class Builder{public Builder setAudioAttributes(AudioAttributes a){return this;}public Builder setAudioFormat(AudioFormat f){return this;}public Builder setTransferMode(int i){return this;}public Builder setBufferSizeInBytes(int i){return this;}public AudioTrack build(){return new AudioTrack();}}public int getState(){return state;}public void release(){}public int write(short[] a,int b,int c,int d){state=STATE_INITIALIZED;return c;}public int getPlayState(){return 0;}public void stop(){}public int reloadStaticData(){return SUCCESS;}public int setVolume(float v){return SUCCESS;}public void play(){if(state!=STATE_INITIALIZED)throw new IllegalStateException("no PCM");}}',
+                'android/util/Log.java': 'package android.util;public class Log{public static int e(String a,String b,Throwable t){return 0;}}',
+                'org/smoodri/app/AudioHarness.java': 'package org.smoodri.app;public class AudioHarness{public static void main(String[] args){NativeAlertPlayer p=new NativeAlertPlayer();if(!p.play("normal","square",70))throw new AssertionError(p.lastError());if(!p.play("normal","square",70))throw new AssertionError(p.lastError());p.release();System.out.println("STATIC_AUDIO_OK");}}',
+            }
+            files=[]
+            for rel,code in sources.items():
+                f=root/rel;f.parent.mkdir(parents=True,exist_ok=True);f.write_text(code);files.append(str(f))
+            cmd=['javac','-encoding','UTF-8','-d',str(root/'out'),*files,str(JAVA/'NativeAlertPlayer.java')]
+            compile_result=subprocess.run(cmd,capture_output=True,text=True)
+            self.assertEqual(compile_result.returncode,0,compile_result.stderr)
+            run=subprocess.run(['java','-cp',str(root/'out'),'org.smoodri.app.AudioHarness'],capture_output=True,text=True)
+            self.assertEqual(run.returncode,0,run.stderr)
+            self.assertIn('STATIC_AUDIO_OK',run.stdout)
 
     def test_java_pcm_player_compiles_with_android_api_stubs(self):
         if not shutil.which('javac'):self.skipTest('javac unavailable')
@@ -107,7 +132,7 @@ class AudioOnlyRegression(unittest.TestCase):
             sources={
               'android/media/AudioAttributes.java': 'package android.media;public class AudioAttributes{public static final int USAGE_MEDIA=1,CONTENT_TYPE_SONIFICATION=1;public static class Builder{public Builder setUsage(int i){return this;}public Builder setContentType(int i){return this;}public AudioAttributes build(){return new AudioAttributes();}}}',
               'android/media/AudioFormat.java':'package android.media;public class AudioFormat{public static final int ENCODING_PCM_16BIT=2,CHANNEL_OUT_MONO=4;public static class Builder{public Builder setEncoding(int i){return this;}public Builder setSampleRate(int i){return this;}public Builder setChannelMask(int i){return this;}public AudioFormat build(){return new AudioFormat();}}}',
-              'android/media/AudioTrack.java':'package android.media;public class AudioTrack{public static final int MODE_STATIC=0,STATE_INITIALIZED=1,PLAYSTATE_PLAYING=3,WRITE_BLOCKING=0;public static class Builder{public Builder setAudioAttributes(AudioAttributes a){return this;}public Builder setAudioFormat(AudioFormat f){return this;}public Builder setTransferMode(int i){return this;}public Builder setBufferSizeInBytes(int i){return this;}public AudioTrack build(){return new AudioTrack();}}public int getState(){return 1;}public void release(){}public int write(short[] a,int b,int c,int d){return c;}public int getPlayState(){return 3;}public void stop(){}public int reloadStaticData(){return 0;}public int setVolume(float v){return 0;}public void play(){}}',
+              'android/media/AudioTrack.java':'package android.media;public class AudioTrack{public static final int MODE_STATIC=0,STATE_INITIALIZED=1,STATE_NO_STATIC_DATA=2,PLAYSTATE_PLAYING=3,WRITE_BLOCKING=0,SUCCESS=0;public static class Builder{public Builder setAudioAttributes(AudioAttributes a){return this;}public Builder setAudioFormat(AudioFormat f){return this;}public Builder setTransferMode(int i){return this;}public Builder setBufferSizeInBytes(int i){return this;}public AudioTrack build(){return new AudioTrack();}}private int state=STATE_NO_STATIC_DATA;public int getState(){return state;}public void release(){}public int write(short[] a,int b,int c,int d){state=STATE_INITIALIZED;return c;}public int getPlayState(){return 3;}public void stop(){}public int reloadStaticData(){return 0;}public int setVolume(float v){return 0;}public void play(){}}',
               'android/util/Log.java':'package android.util;public class Log{public static int e(String a,String b,Throwable t){return 0;}}'
             }
             files=[]

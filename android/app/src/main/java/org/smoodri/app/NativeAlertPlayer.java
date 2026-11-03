@@ -55,10 +55,27 @@ final class NativeAlertPlayer {
                 .setAudioFormat(new AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_16BIT)
                         .setSampleRate(RATE).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
                 .setTransferMode(AudioTrack.MODE_STATIC).setBufferSizeInBytes(pcm.length*2).build();
-        if(result.getState()!=AudioTrack.STATE_INITIALIZED){result.release();throw new IllegalStateException("AudioTrack chưa khởi tạo");}
-        int written=result.write(pcm,0,pcm.length,AudioTrack.WRITE_BLOCKING);
-        if(written!=pcm.length){result.release();throw new IllegalStateException("Thiếu dữ liệu PCM");}
-        track=result; loadedKey=kind+"/"+style;
+        // MODE_STATIC: khi mới tạo, STATE_NO_STATIC_DATA (2) là bình thường.
+        // Không được từ chối trước khi nạp PCM: đây là lỗi gây mất âm ở v1.0.9.
+        try {
+            int initialState = result.getState();
+            if (initialState != AudioTrack.STATE_NO_STATIC_DATA &&
+                    initialState != AudioTrack.STATE_INITIALIZED) {
+                throw new IllegalStateException("AudioTrack không tạo được, state=" + initialState);
+            }
+            int written = result.write(pcm, 0, pcm.length, AudioTrack.WRITE_BLOCKING);
+            if (written != pcm.length) {
+                throw new IllegalStateException("AudioTrack nạp PCM thiếu: " + written + "/" + pcm.length);
+            }
+            if (result.getState() != AudioTrack.STATE_INITIALIZED) {
+                throw new IllegalStateException("AudioTrack chưa sẵn sàng SAU khi nạp PCM, state=" + result.getState());
+            }
+            track = result;
+            loadedKey = kind + "/" + style;
+        } catch (RuntimeException error) {
+            result.release();
+            throw error;
+        }
     }
     synchronized boolean play(String kind,String style,int volume){
         try{
@@ -67,8 +84,15 @@ final class NativeAlertPlayer {
             String key=kind+"/"+style;
             if(track==null||!loadedKey.equals(key))prepare(kind,style);
             if(track.getPlayState()==AudioTrack.PLAYSTATE_PLAYING)track.stop();
-            track.reloadStaticData();
-            track.setVolume(Math.max(0,Math.min(100,volume))/100f);
+            // Quay về đầu đoạn âm cho cả lần phát đầu và các lần tiếp theo.
+            int rewind = track.reloadStaticData();
+            if (rewind != AudioTrack.SUCCESS) {
+                throw new IllegalStateException("Không tua lại âm: " + rewind);
+            }
+            int gain = track.setVolume(Math.max(0,Math.min(100,volume))/100f);
+            if (gain != AudioTrack.SUCCESS) {
+                throw new IllegalStateException("Không đặt được âm lượng: " + gain);
+            }
             track.play();
             lastError="";
             return true;

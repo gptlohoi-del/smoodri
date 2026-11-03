@@ -174,7 +174,7 @@ public final class MainActivity extends Activity {
         @JavascriptInterface public String diagnostics(){
             JSONObject result=new JSONObject();
             try{
-                result.put("version","1.0.9");
+                result.put("version","1.0.10");
                 result.put("running",DriveMonitorService.running());
                 result.put("sensorReady",DriveMonitorService.sensorReady());
                 result.put("soundEnabled",DriveMonitorService.soundEnabled());
