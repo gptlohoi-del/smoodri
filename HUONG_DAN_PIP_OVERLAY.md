@@ -1,4 +1,4 @@
-# PiP, Overlay và Chỉ âm thanh nền (v1.0.6)
+# PiP, Overlay và Chỉ âm thanh nền (v1.0.7)
 
 Mở **CÀI ĐẶT CHUNG → Kiểu cửa sổ khi ra màn hình ngoài** và chọn:
 
@@ -10,4 +10,9 @@ PiP/Overlay mặc định hiển thị **TỐC ĐỘ, TRẠNG THÁI và CỐC G*
 
 Sau khi chọn chế độ, bấm **BẮT ĐẦU** rồi nhấn Home hoặc nút mở chế độ tương ứng trên màn hình chính. **Không vuốt bỏ ứng dụng khỏi danh sách ứng dụng gần đây** nếu muốn dịch vụ còn hoạt động; bản Android hiện tại dừng theo dõi khi tác vụ bị loại bỏ hoặc người dùng nhấn DỪNG. Thông báo dịch vụ có nút Dừng theo dõi.
 
-Chuyển đổi PiP/Overlay/Chỉ âm thanh nền cần cài APK mới **v1.0.6**, vì phải sửa Android native. Các tùy chọn giao diện web về sau có thể cập nhật OTA. Trên một số máy Android bị quản trị hạn chế quyền, các chức năng nền có thể không khả dụng.
+Chuyển đổi PiP/Overlay/Chỉ âm thanh nền cần cài APK mới **v1.0.7**, vì phải sửa Android native. Các tùy chọn giao diện web về sau có thể cập nhật OTA. Trên một số máy Android bị quản trị hạn chế quyền, các chức năng nền có thể không khả dụng.
+
+
+## Chẩn đoán khi không có PiP, Overlay hoặc âm thanh
+
+Vào CÀI ĐẶT CHUNG → **KIỂM TRA ANDROID / PiP / OVERLAY / GPS**. Xem `HUONG_DAN_SUA_LOI_V1_0_7.md` và sử dụng bản APK v1.0.7, không chỉ thay web OTA.

@@ -37,16 +37,20 @@ public final class DriveMonitorService extends Service implements SensorEventLis
     public static final String ACTION_SETTINGS = "org.smoodri.app.SETTINGS";
     public static final String ACTION_OVERLAY_SHOW = "org.smoodri.app.OVERLAY_SHOW";
     public static final String ACTION_OVERLAY_HIDE = "org.smoodri.app.OVERLAY_HIDE";
+    public static final String ACTION_TEST_BEEP = "org.smoodri.app.TEST_BEEP";
     public static final String EXTRA_SETTINGS = "settings";
     private static final String CHANNEL_ID = "smoodri_monitor_v1";
     private static final int NOTIFICATION_ID = 2026;
     private static final double GRAVITY = 9.80665;
     private static volatile DriveMonitorService instance;
+    private static volatile String startError="";
+    private volatile boolean ready;
+    public static String lastStartError(){return startError;}
     private static volatile Snapshot lastSnapshot = new Snapshot();
     private static volatile String lastSample = "";
     private static volatile long lastSampleSeq = 0;
 
-    public static boolean running() { return instance != null; }
+    public static boolean running() { return instance != null && instance.ready; }
     public static Snapshot snapshot() { return lastSnapshot; }
     public static String lastSample() { return lastSample; }
     public static long lastSampleSeq() { return lastSampleSeq; }
@@ -151,9 +155,14 @@ public final class DriveMonitorService extends Service implements SensorEventLis
             return START_NOT_STICKY;
         }
         if (ACTION_OVERLAY_SHOW.equals(action)) {
-            if(sensors!=null && overlay!=null)overlay.show();
+            if(ready && overlay!=null)overlay.show();
             return START_NOT_STICKY;
         }
+        if (ACTION_TEST_BEEP.equals(action)) {
+            if(ready)playNativeAlert();
+            return START_NOT_STICKY;
+        }
+        if (ACTION_SETTINGS.equals(action) && !ready) return START_NOT_STICKY;
         if (intent != null && intent.hasExtra(EXTRA_SETTINGS)) {
             try { configuration = new JSONObject(intent.getStringExtra(EXTRA_SETTINGS)); }
             catch (Exception ignored) { /* use previous defaults */ }
@@ -168,22 +177,34 @@ public final class DriveMonitorService extends Service implements SensorEventLis
         }
         if (sensors != null) { updateAudioWakeLock();publish(); return START_NOT_STICKY; }
         // For targetSdk 34, a location FGS needs location permission AND location enabled.
-        if (!hasLocationPermission() || !locationEnabled()) { shutdown(); return START_NOT_STICKY; }
+        if (!hasLocationPermission() || !locationEnabled()) {
+            startError=!hasLocationPermission()?"Android chưa cấp quyền Vị trí cho SmooDri.":"Dịch vụ GPS/Vị trí đang tắt.";
+            shutdown(); return START_NOT_STICKY;
+        }
+        startError="";
         createChannel();
         try {
             Notification notification = createNotification();
             if (Build.VERSION.SDK_INT >= 29) {
                 startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
             } else startForeground(NOTIFICATION_ID, notification);
-        } catch (RuntimeException error) { shutdown(); return START_NOT_STICKY; }
+        } catch (RuntimeException error) {
+            startError="Không thể bật dịch vụ nền: "+error.getClass().getSimpleName();
+            shutdown(); return START_NOT_STICKY;
+        }
         sensors = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         locations = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         calibrationStart = SystemClock.elapsedRealtime();
+        boolean accelerometerReady=false;
         if (sensors != null) {
             Sensor accel = sensors.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
             Sensor lin = sensors.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
-            if (accel != null) sensors.registerListener(this, accel, SensorManager.SENSOR_DELAY_GAME);
+            if (accel != null) accelerometerReady=sensors.registerListener(this, accel, SensorManager.SENSOR_DELAY_GAME);
             if (lin != null) sensors.registerListener(this, lin, SensorManager.SENSOR_DELAY_GAME);
+        }
+        if(!accelerometerReady){
+            startError="Không nhận được cảm biến gia tốc. Kiểm tra thiết bị hoặc chính sách quản trị.";
+            shutdown();return START_NOT_STICKY;
         }
         try {
             if (locations != null) {
@@ -194,6 +215,7 @@ public final class DriveMonitorService extends Service implements SensorEventLis
                     locations.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 0, this, Looper.getMainLooper());
             }
         } catch (SecurityException | IllegalArgumentException ignored) {}
+        ready=true;
         updateAudioWakeLock();
         publish();
         return START_NOT_STICKY;
@@ -346,20 +368,28 @@ public final class DriveMonitorService extends Service implements SensorEventLis
             }
             statusHoldUntil=now+(long)(Math.max(0,setting("alertHoldTime",3))*1000);
         }else if(now>=statusHoldUntil){ drivingStatus="ÊM ÁI";lastStatusLevel=0; }
-        // Only in background/PiP: web already plays alerts while it is in the foreground.
-        int maxAll=highest;
+        // PiP, Overlay and audio-only all retain sound when alerts are enabled.
+        // Web Audio handles foreground alerts; native ToneGenerator handles background alerts.
         if(!MainActivity.uiForeground && configuration.optBoolean("soundEnabled",true) && severity>=100 && now-lastAlert>5000) {
             lastAlert=now;
-            try {
-                if(alarm==null) alarm=new ToneGenerator(AudioManager.STREAM_NOTIFICATION,
-                        (int)clamp(setting("volumePercent",70),10,100));
-                final ToneGenerator beep=alarm;
-                for(int i=0;i<4;i++)audioHandler.postDelayed(()->beep.startTone(ToneGenerator.TONE_PROP_BEEP,85),i*175L);
-            }catch(RuntimeException ignored){}
+            playNativeAlert();
         }
         sendSample(now);
         publish();
     }
+    private void playNativeAlert(){
+        try {
+            // STREAM_MUSIC is independently audible even if notification sounds are muted.
+            if(alarm==null)alarm=new ToneGenerator(AudioManager.STREAM_MUSIC,
+                    (int)clamp(setting("volumePercent",70),0,100));
+            final ToneGenerator beep=alarm;
+            audioHandler.removeCallbacksAndMessages(null);
+            for(int i=0;i<4;i++)audioHandler.postDelayed(()->{
+                try{beep.startTone(ToneGenerator.TONE_PROP_BEEP,90);}catch(RuntimeException ignored){}
+            },i*190L);
+        }catch(RuntimeException ignored){}
+    }
+    private long gpsSequence;
     private void sendSample(long now) {
         // Web UI is updated only when visible; native service keeps running regardless.
         if (now-emitAt<90) return;
@@ -373,6 +403,13 @@ public final class DriveMonitorService extends Service implements SensorEventLis
                 JSONObject lin = new JSONObject();
                 lin.put("x",linear[0]*GRAVITY); lin.put("y",linear[1]*GRAVITY); lin.put("z",linear[2]*GRAVITY);
                 sample.put("lin",lin);
+            }
+            // Permission and GPS speed come from native LocationManager, not WebView.
+            sample.put("gpsSeq",gpsSequence);
+            if(lastGps>0){
+                sample.put("gpsAgeMs",Math.max(0,now-lastGps));
+                sample.put("gpsSpeed",Float.isFinite(speed)?speed:JSONObject.NULL);
+                sample.put("gpsAccuracy",Float.isFinite(accuracy)?accuracy:JSONObject.NULL);
             }
             lastSample=sample.toString();
             lastSampleSeq++;
@@ -403,6 +440,7 @@ public final class DriveMonitorService extends Service implements SensorEventLis
         long now=SystemClock.elapsedRealtime();
         if (lastGps>0) { long dt=now-lastGps; if(dt>0) hz=(float)(1000.0/dt); }
         lastGps=now;
+        gpsSequence++;
         accuracy=loc.hasAccuracy()?loc.getAccuracy():Float.NaN;
         if (loc.hasSpeed() && loc.getSpeed()>=0) speed=loc.getSpeed()*3.6f;
         else speed=Float.NaN; // Never retain stale speed or infer speed from one location.
@@ -411,6 +449,7 @@ public final class DriveMonitorService extends Service implements SensorEventLis
     @Override public void onProviderDisabled(String provider) { speed=Float.NaN; publish(); }
     @Override public void onTaskRemoved(Intent rootIntent) { shutdown(); super.onTaskRemoved(rootIntent); }
     private void releaseResources() {
+        ready=false;
         releaseAudioWakeLock();
         if(overlay!=null)overlay.hide();
         audioHandler.removeCallbacksAndMessages(null);

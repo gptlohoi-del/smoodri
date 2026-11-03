@@ -54,7 +54,7 @@
       </div>
 
       <div id="speedPanel" class="speed-panel" aria-live="off" aria-label="Tốc độ GPS tham khảo">
-        <div class="speed-number-row"><span id="speedValue">--</span><span class="speed-unit">km/h</span></div>
+        <div class="speed-number-row"><span id="speedValue">--</span></div>
         <div id="gpsStatus" class="gps-status">GPS --</div>
       </div>
 
@@ -268,8 +268,12 @@
       </div>
 
       <div class="section-divider">6. Cửa sổ nổi PiP / Overlay trên Android</div>
+      <div class="setting-card">
+        <button type="button" class="btn-option" id="btnAndroidDiagnostics">🔎 KIỂM TRA ANDROID / PiP / OVERLAY / GPS</button>
+        <div id="androidDiagnostics" class="setting-hint" aria-live="polite">Chạm để kiểm tra APK, quyền vị trí, dịch vụ nền và quyền Overlay.</div>
+      </div>
       <div class="setting-group">
-        <div class="setting-hint">Chọn <strong>PiP</strong>, <strong>Overlay</strong> hoặc <strong>Chỉ âm thanh nền</strong>. PiP/Overlay dùng chung cài đặt hiển thị; chế độ âm thanh nền không tạo cửa sổ nhưng vẫn cảnh báo bằng Foreground Service trong APK. Chỉ một chế độ hoạt động mỗi lần.</div>
+        <div class="setting-hint">Chọn <strong>PiP</strong>, <strong>Overlay</strong> hoặc <strong>Chỉ âm thanh nền</strong>. <strong>Cả ba chế độ đều có âm thanh cảnh báo khi vượt ngưỡng nếu bật ÂM THANH CẢNH BÁO.</strong> Không phát liên tục khi vận hành êm. Trong APK, nhấn NGHE THỬ 4 TIẾNG BÍP khi đang theo dõi để kiểm tra âm báo native. Chỉ một chế độ cửa sổ hoạt động mỗi lần.</div>
         <div class="setting-label"><label for="selFloatingMode">Kiểu cửa sổ khi ra màn hình ngoài</label>
           <select id="selFloatingMode"><option value="pip">PiP — Android quản lý kích thước</option><option value="overlay">Overlay — tự kéo và thay đổi kích thước</option><option value="audio">Chỉ âm thanh nền — không hiện cửa sổ</option></select>
         </div>

@@ -61,9 +61,18 @@ public final class MainActivity extends Activity {
                         if (!sample.isEmpty()) web.evaluateJavascript("window.SmooDriNative&&window.SmooDriNative.onNativeSample("+sample+");",null);
                     }
                 }
-                if (sessionRequested && !running && System.currentTimeMillis()-startRequestedAt>4000) {
+                if(sessionRequested && running && !sessionConfirmed){
+                    sessionConfirmed=true;
+                    signalStarted(true,"");
+                }
+                if(sessionRequested && !running && System.currentTimeMillis()-startRequestedAt>5000){
                     sessionRequested=false;
-                    web.evaluateJavascript("window.SmooDriNative&&window.SmooDriNative.onMonitorStopped();",null);
+                    String reason=DriveMonitorService.lastStartError();
+                    if(reason.isEmpty())reason="Dịch vụ theo dõi đã dừng. Kiểm tra quyền và cảm biến.";
+                    if(!sessionConfirmed)signalStarted(false,reason);
+                    else web.evaluateJavascript("window.SmooDriNative&&window.SmooDriNative.onMonitorStopped("+
+                        org.json.JSONObject.quote(reason)+");",null);
+                    sessionConfirmed=false;
                     if(isInPictureInPictureMode())finish();
                 }
                 if(pipView!=null && isInPictureInPictureMode()) pipView.invalidate();
@@ -74,11 +83,12 @@ public final class MainActivity extends Activity {
     private GeolocationPermissions.Callback locationCallback;
     private String locationOrigin;
     private String pendingConfig;
-    private boolean previousRunning,sessionRequested,useBundledFallback;
+    private boolean previousRunning,sessionRequested,sessionConfirmed,useBundledFallback;
     private long lastSeq,startRequestedAt;
     private String lastPipRatio = "";
     private String floatingMode = "pip";
     private boolean openingOverlayPermission = false;
+    private boolean pendingOverlayAfterPermission = false;
     public static volatile boolean uiForeground;
 
     @Override protected void onCreate(Bundle state) {
@@ -182,6 +192,12 @@ public final class MainActivity extends Activity {
         @JavascriptInterface public void requestOverlayPermission(){ runOnUiThread(()->requestOverlayPermissionPage()); }
         @JavascriptInterface public boolean canOverlay(){ return Settings.canDrawOverlays(MainActivity.this); }
         @JavascriptInterface public boolean monitoring(){ return DriveMonitorService.running(); }
+        @JavascriptInterface public void testNativeBeep(){
+            runOnUiThread(()->{
+                if(DriveMonitorService.running())sendService(DriveMonitorService.ACTION_TEST_BEEP,null);
+                else Toast.makeText(MainActivity.this,"Nhấn BẮT ĐẦU trước khi nghe thử âm báo native.",Toast.LENGTH_SHORT).show();
+            });
+        }
         @JavascriptInterface public String overlayGeometry(){
             android.content.SharedPreferences p=getSharedPreferences(NativeOverlayController.PREFS,Context.MODE_PRIVATE);
             // Never mutate this value: WebView JS reads it as JSON.
@@ -189,6 +205,19 @@ public final class MainActivity extends Activity {
                 +",\"dragRevision\":"+p.getLong("dragRevision",0L)+"}";
         }
         @JavascriptInterface public boolean supported(){ return Build.VERSION.SDK_INT>=26; }
+        @JavascriptInterface public String diagnostics(){
+            org.json.JSONObject result=new org.json.JSONObject();
+            try {
+                result.put("version","1.0.7");
+                result.put("running",DriveMonitorService.running());
+                result.put("error",DriveMonitorService.lastStartError());
+                result.put("locationPermission",hasLocationPermission());
+                result.put("locationEnabled",isLocationEnabled());
+                result.put("overlayPermission",Settings.canDrawOverlays(MainActivity.this));
+                result.put("mode",floatingMode);
+            }catch(Exception ignored){}
+            return result.toString();
+        }
     }
     private void requestStart(String config){
         try{
@@ -209,9 +238,11 @@ public final class MainActivity extends Activity {
         try{
             sendService(DriveMonitorService.ACTION_START,config);
             sessionRequested=true;
+            sessionConfirmed=false;
             startRequestedAt=System.currentTimeMillis();
             updatePipParams();
-            signalStarted(true,"");
+            // Do NOT signal success yet. The update loop acknowledges only when
+            // Android reports the location FGS AND accelerometer were started.
             if(Build.VERSION.SDK_INT>=33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED){
                 requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},REQ_NOTIFICATIONS);
             }
@@ -229,6 +260,7 @@ public final class MainActivity extends Activity {
     }
     private void stopMonitor(){
         sessionRequested=false;
+        sessionConfirmed=false;
         stopService(new Intent(this,DriveMonitorService.class));
         previousRunning=false;
         updatePipParams();
@@ -292,7 +324,10 @@ public final class MainActivity extends Activity {
                 Toast.makeText(this,"Hãy nhấn BẮT ĐẦU trước khi mở Overlay.",Toast.LENGTH_SHORT).show();
                 return;
             }
-            if(!Settings.canDrawOverlays(this)){requestOverlayPermissionPage();return;}
+            if(!Settings.canDrawOverlays(this)){
+                pendingOverlayAfterPermission=true;
+                requestOverlayPermissionPage();return;
+            }
             sendService(DriveMonitorService.ACTION_OVERLAY_SHOW,null);
             moveTaskToBack(true);
         }else openPip(true);
@@ -328,6 +363,17 @@ public final class MainActivity extends Activity {
         uiForeground=!isInPictureInPictureMode();
         openingOverlayPermission=false;
         if(DriveMonitorService.running())sendService(DriveMonitorService.ACTION_OVERLAY_HIDE,null);
+        if(pendingOverlayAfterPermission){
+            pendingOverlayAfterPermission=false;
+            if(DriveMonitorService.running() && "overlay".equals(floatingMode) && Settings.canDrawOverlays(this)){
+                handler.postDelayed(()->{
+                    if(!isFinishing() && DriveMonitorService.running()){
+                        sendService(DriveMonitorService.ACTION_OVERLAY_SHOW,null);
+                        moveTaskToBack(true);
+                    }
+                },400);
+            }else Toast.makeText(this,"Overlay chưa được cấp quyền hoặc dịch vụ đã dừng.",Toast.LENGTH_LONG).show();
+        }
         if(web!=null) web.evaluateJavascript(
                 "window.SmooDriNative&&window.SmooDriNative.onAppResumed&&window.SmooDriNative.onAppResumed();",null);
         // If we had to load the APK-bundled fallback, retry the real web on the next
@@ -343,7 +389,7 @@ public final class MainActivity extends Activity {
         if(!DriveMonitorService.running() || openingOverlayPermission)return;
         if("overlay".equals(floatingMode)) {
             if(Settings.canDrawOverlays(this))sendService(DriveMonitorService.ACTION_OVERLAY_SHOW,null);
-        } else if("pip".equals(floatingMode) && Build.VERSION.SDK_INT>=26 && Build.VERSION.SDK_INT<31)openPip(false);
+        } else if("pip".equals(floatingMode) && Build.VERSION.SDK_INT>=26 && !isInPictureInPictureMode())openPip(false);
     }
     @Override public void onPictureInPictureModeChanged(boolean inPip,Configuration c){
         super.onPictureInPictureModeChanged(inPip,c);

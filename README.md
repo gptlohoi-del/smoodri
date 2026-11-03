@@ -1,3 +1,7 @@
+# SmooDri v1.0.7 — Sửa PiP / Overlay / âm thanh nền và GPS
+
+**Bản sửa 1.0.7:** Chờ Foreground Service thật sự khởi động, dùng GPS native để không báo sai quyền WebView, chuyển tiếng bíp nền qua âm lượng Media, bổ sung KIỂM TRA ANDROID trong SETTING và bỏ `km/h` màu đen. Xem [HUONG_DAN_SUA_LOI_V1_0_7.md](HUONG_DAN_SUA_LOI_V1_0_7.md).
+
 # SmooDri v1.0.6 — TỐC ĐỘ / TRẠNG THÁI / CỐC G + âm thanh nền
 
 Phiên bản này giữ One View, OTA, Foreground Service, PiP và Overlay, bổ sung chế độ thứ ba **Chỉ âm thanh nền** (không hiện cửa sổ nổi). Bố cục PiP/Overlay mặc định chỉ có TỐC ĐỘ, TRẠNG THÁI, CỐC G-force; có thể bật riêng các chỉ số GA/PHANH/CUA/Ổ GÀ/GPS.

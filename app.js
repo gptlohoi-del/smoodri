@@ -9,11 +9,14 @@ const IS_NATIVE_ANDROID = !!(window.SmooDriAndroid && typeof window.SmooDriAndro
 window.SmooDriNative = {
   onStarted: null,
   onNativeSample(sample) {
-    if (!isRunning || !sample || !sample.ag) return;
-    handleMotion({ accelerationIncludingGravity: sample.ag, acceleration: sample.lin || null });
+    if (!isRunning || !sample) return;
+    // APK: GPS and accelerometer originate from the same Android foreground service.
+    // Do not request a second WebView geolocation permission and report it as Android's permission.
+    if (IS_NATIVE_ANDROID) gpsNativeSample(sample);
+    if (sample.ag) handleMotion({ accelerationIncludingGravity: sample.ag, acceleration: sample.lin || null });
   },
-  onMonitorStopped() {
-    if (isRunning) stopApp('ĐÃ DỪNG DỊCH VỤ', 'Dịch vụ Android đã ngừng theo dõi');
+  onMonitorStopped(reason) {
+    if (isRunning) stopApp('ĐÃ DỪNG DỊCH VỤ', reason || 'Dịch vụ Android đã ngừng theo dõi');
   },
   onAppResumed() {
     if (!IS_NATIVE_ANDROID) return;
@@ -293,6 +296,24 @@ let gpsSmoothed = null;
 let gpsSensorAccel = 0;
 let gpsTicker = null;
 let gpsLastError = '';
+let nativeGpsSequence = -1;
+function gpsNativeSample(sample) {
+  const seq=Number(sample.gpsSeq);
+  if(!Number.isFinite(seq) || seq<=0 || seq===nativeGpsSequence) return;
+  nativeGpsSequence=seq;
+  const age=Number(sample.gpsAgeMs);
+  const speed=sample.gpsSpeed==null?null:Number(sample.gpsSpeed);
+  const accuracy=sample.gpsAccuracy==null?null:Number(sample.gpsAccuracy);
+  const t=performance.now()-Math.max(0,Number.isFinite(age)?age:0);
+  const next={speed:Number.isFinite(speed)&&speed>=0?speed:null,
+    accuracy:Number.isFinite(accuracy)&&accuracy>=0?accuracy:null,
+    time:t,lat:null,lon:null};
+  gpsPrevious=gpsLast;gpsLast=next;
+  gpsLastReceived=t;
+  gpsSmoothed=next.speed===null?null:(gpsSmoothed===null?next.speed:gpsSmoothed*.65+next.speed*.35);
+  gpsLastError='';
+  renderGpsSpeed();
+}
 function speedSettings() {
   $('speedPanel').classList.toggle('is-hidden', !config.speedVisible);
   $('speedPanel').style.setProperty('--speed-font-size', `${config.speedFontSize}px`);
@@ -362,15 +383,24 @@ function renderGpsSpeed() {
     speedEl.textContent=String(Math.round(estimate));
     status.textContent='ƯỚC TÍNH · GPS MẤT';status.className='gps-status gps-estimate';
   }else{
-    speedEl.textContent='--';status.textContent=gpsLastError||'GPS MẤT';status.className='gps-status gps-warning';
+    speedEl.textContent='--';
+    status.textContent=(IS_NATIVE_ANDROID && gpsLast && gpsLast.speed===null && elapsed<=3.5)
+      ? 'GPS ĐÃ CÓ VỊ TRÍ · CHƯA CÓ TỐC ĐỘ' : (gpsLastError||'GPS MẤT');
+    status.className='gps-status gps-warning';
   }
 }
 function startGps() {
-  stopGps(); gpsLast=null;gpsPrevious=null;gpsSmoothed=null;gpsSensorAccel=0;gpsLastReceived=0;gpsLastError='';
-  window.addEventListener('devicemotion',gpsMotionSample);
-  if(!navigator.geolocation){gpsLastError='GPS KHÔNG HỖ TRỢ';renderGpsSpeed();return;}
-  try {gpsWatchId=navigator.geolocation.watchPosition(gpsSuccess,gpsFailure,{enableHighAccuracy:true,maximumAge:0,timeout:10000});}
-  catch(_){gpsLastError='GPS KHÔNG KHỞI ĐỘNG';}
+  stopGps(); gpsLast=null;gpsPrevious=null;gpsSmoothed=null;gpsSensorAccel=0;gpsLastReceived=0;gpsLastError='';nativeGpsSequence=-1;
+  if(IS_NATIVE_ANDROID) {
+    // Native LocationManager already has ACCESS_FINE/COARSE_LOCATION from MainActivity.
+    // Its samples are delivered via onNativeSample; do not duplicate watchPosition.
+    gpsLastError='ĐANG CHỜ GPS';
+  } else {
+    window.addEventListener('devicemotion',gpsMotionSample);
+    if(!navigator.geolocation){gpsLastError='GPS KHÔNG HỖ TRỢ';renderGpsSpeed();return;}
+    try {gpsWatchId=navigator.geolocation.watchPosition(gpsSuccess,gpsFailure,{enableHighAccuracy:true,maximumAge:0,timeout:10000});}
+    catch(_){gpsLastError='GPS KHÔNG KHỞI ĐỘNG';}
+  }
   gpsTicker=setInterval(renderGpsSpeed,400);renderGpsSpeed();
 }
 function stopGps() {
@@ -918,6 +948,23 @@ $('selSpeedWeight').addEventListener('change', e=>{config.speedWeight=Number(e.t
 $('inpSpeedColor').addEventListener('input', e=>{config.speedColor=e.target.value;speedSettings();saveConfig();});
 $('rngGpsFallback').addEventListener('input', e=>{config.gpsFallbackSeconds=Number(e.target.value);speedSettings();saveConfig();renderGpsSpeed();});
 $('btnStart').addEventListener('click', startApp);
+$('btnAndroidDiagnostics').addEventListener('click',()=>{
+  const output=$('androidDiagnostics');
+  if(!IS_NATIVE_ANDROID || typeof window.SmooDriAndroid.diagnostics!=='function'){
+    output.textContent=IS_NATIVE_ANDROID
+      ?'APK này chưa có bộ kiểm tra Android mới. Cần cài APK SmooDri v1.0.7, chỉ OTA web không đủ.'
+      :'Bạn đang xem trang web/PWA, không phải APK Android có PiP và Foreground Service.';
+    return;
+  }
+  try {
+    const d=JSON.parse(window.SmooDriAndroid.diagnostics());
+    output.textContent=`APK ${d.version||'?'} · Dịch vụ: ${d.running?'ĐANG CHẠY':'CHƯA CHẠY'} · `+
+      `Quyền Vị trí: ${d.locationPermission?'ĐÃ CẤP':'CHƯA CẤP'} · `+
+      `GPS hệ thống: ${d.locationEnabled?'ĐÃ BẬT':'ĐÃ TẮT'} · `+
+      `Quyền Overlay: ${d.overlayPermission?'ĐÃ CẤP':'CHƯA CẤP'} · `+
+      `Chế độ: ${d.mode||'?'}${d.error?' · Lỗi: '+d.error:''}`;
+  } catch(error){output.textContent='Không đọc được trạng thái Android: '+error.message;}
+});
 if (IS_NATIVE_ANDROID) {
   const nativePipButton = $('btnNativePip');
   if (nativePipButton) {
@@ -967,7 +1014,12 @@ for (const wave of ['sawtooth', 'square', 'sine']) {
     applyPotholeWave(wave); if (config.soundEnabled) potholeBurst();
   });
 }
-$('btnTestBeepHigh').addEventListener('click', () => burst());
+$('btnTestBeepHigh').addEventListener('click', () => {
+  if(IS_NATIVE_ANDROID && typeof window.SmooDriAndroid.testNativeBeep==='function'
+     && window.SmooDriAndroid.monitoring()) {
+    window.SmooDriAndroid.testNativeBeep();
+  } else burst();
+});
 $('btnTestPothole').addEventListener('click', potholeBurst);
 function bindSliders() {
   bindNumericSlider('rngVolumeBoost', 'lblVolumeBoost', 'volumePercent', '%', 0);
