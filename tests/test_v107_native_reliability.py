@@ -27,9 +27,10 @@ class NativeReliability(unittest.TestCase):
  def test_audio_all_modes_and_real_test(self):
   service=(JAVA/'DriveMonitorService.java').read_text()
   js=(ROOT/'app.js').read_text()
-  self.assertIn('AudioManager.STREAM_MUSIC',service)
+  self.assertIn('NativeAlertPlayer',service)
   self.assertIn('ACTION_TEST_BEEP',service)
-  self.assertIn('!MainActivity.uiForeground',service)
+  self.assertIn('playNativeAlert(',service)
+  self.assertIn('if (IS_NATIVE_ANDROID || !config.soundEnabled) return;',js)
   self.assertIn('testNativeBeep',js)
  def test_diagnostics_and_three_modes(self):
   activity=(JAVA/'MainActivity.java').read_text()

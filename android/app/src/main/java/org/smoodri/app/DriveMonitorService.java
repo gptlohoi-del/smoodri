@@ -22,9 +22,6 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.os.PowerManager;
 import android.os.SystemClock;
-import android.media.AudioManager;
-import android.media.ToneGenerator;
-import android.os.Handler;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import java.util.ArrayDeque;
@@ -46,6 +43,15 @@ public final class DriveMonitorService extends Service implements SensorEventLis
     private static volatile String startError="";
     private volatile boolean ready;
     public static String lastStartError(){return startError;}
+    public static String lastOverlayError(){return overlayError;}
+    public static boolean overlayVisible(){
+        DriveMonitorService svc=instance;
+        return svc!=null && svc.overlay!=null && svc.overlay.isVisible();
+    }
+    public static String lastAudioError(){
+        DriveMonitorService svc=instance;
+        return svc==null?"":svc.alarm.lastError();
+    }
     private static volatile Snapshot lastSnapshot = new Snapshot();
     private static volatile String lastSample = "";
     private static volatile long lastSampleSeq = 0;
@@ -112,10 +118,10 @@ public final class DriveMonitorService extends Service implements SensorEventLis
     private final ArrayDeque<Long> reversals = new ArrayDeque<>();
     private JSONObject configuration = new JSONObject();
     private long emitAt, lastAlert;
-    private ToneGenerator alarm;
+    private final NativeAlertPlayer alarm = new NativeAlertPlayer();
+    private static volatile String overlayError = "";
     private PowerManager.WakeLock audioWakeLock;
     private NativeOverlayController overlay;
-    private final Handler audioHandler = new Handler(Looper.getMainLooper());
 
     /** Keep the CPU sampling while audio-only is selected, even when the screen sleeps.
      * Not an auto-restart mechanism; stops with the session or if system restrictions apply.
@@ -142,7 +148,11 @@ public final class DriveMonitorService extends Service implements SensorEventLis
         }
     }
 
-    @Override public void onCreate() { super.onCreate(); instance=this; overlay=new NativeOverlayController(this); }
+    @Override public void onCreate() {
+        super.onCreate(); instance=this;
+        overlayError="";
+        overlay=new NativeOverlayController(this);
+    }
 
     void stopFromOverlay(){ shutdown(); }
     @Override public IBinder onBind(Intent intent) { return null; }
@@ -155,11 +165,15 @@ public final class DriveMonitorService extends Service implements SensorEventLis
             return START_NOT_STICKY;
         }
         if (ACTION_OVERLAY_SHOW.equals(action)) {
-            if(ready && overlay!=null)overlay.show();
+            if(!ready) overlayError="Dịch vụ theo dõi chưa sẵn sàng.";
+            else if(!"overlay".equals(configuration.optString("floatingMode","pip")))
+                overlayError="Chế độ cửa sổ nổi chưa được chọn trong SETTING.";
+            else if(overlay!=null && overlay.show()) overlayError="";
+            else overlayError=overlay==null?"Không khởi tạo được cửa sổ nổi.":overlay.lastError();
             return START_NOT_STICKY;
         }
         if (ACTION_TEST_BEEP.equals(action)) {
-            if(ready)playNativeAlert();
+            if(ready)playNativeAlert(intent!=null && "pothole".equals(intent.getStringExtra("soundKind")));
             return START_NOT_STICKY;
         }
         if (ACTION_SETTINGS.equals(action) && !ready) return START_NOT_STICKY;
@@ -169,9 +183,7 @@ public final class DriveMonitorService extends Service implements SensorEventLis
         }
         if(overlay!=null)overlay.configure(configuration);
         if (ACTION_SETTINGS.equals(action) && sensors != null) {
-            // Cập nhật âm lượng native khi người dùng sửa SETTING trong phiên đang chạy.
-            audioHandler.removeCallbacksAndMessages(null);
-            if(alarm!=null){alarm.release();alarm=null;}
+            // Update settings for the single shared native alert player.
             updateAudioWakeLock();
             publish(); return START_NOT_STICKY;
         }
@@ -368,26 +380,18 @@ public final class DriveMonitorService extends Service implements SensorEventLis
             }
             statusHoldUntil=now+(long)(Math.max(0,setting("alertHoldTime",3))*1000);
         }else if(now>=statusHoldUntil){ drivingStatus="ÊM ÁI";lastStatusLevel=0; }
-        // PiP, Overlay and audio-only all retain sound when alerts are enabled.
-        // Web Audio handles foreground alerts; native ToneGenerator handles background alerts.
-        if(!MainActivity.uiForeground && configuration.optBoolean("soundEnabled",true) && severity>=100 && now-lastAlert>5000) {
+        // One audio engine in the APK, whether foreground, PiP, Overlay or audio-only.
+        // Browser Web Audio is disabled in native mode to prevent two different alerts.
+        if(configuration.optBoolean("soundEnabled",true) && severity>=100 && now-lastAlert>5000) {
             lastAlert=now;
-            playNativeAlert();
+            playNativeAlert(xoc>=100 && xoc>=Math.max(ga,Math.max(phanh,cua)));
         }
         sendSample(now);
         publish();
     }
-    private void playNativeAlert(){
-        try {
-            // STREAM_MUSIC is independently audible even if notification sounds are muted.
-            if(alarm==null)alarm=new ToneGenerator(AudioManager.STREAM_MUSIC,
-                    (int)clamp(setting("volumePercent",70),0,100));
-            final ToneGenerator beep=alarm;
-            audioHandler.removeCallbacksAndMessages(null);
-            for(int i=0;i<4;i++)audioHandler.postDelayed(()->{
-                try{beep.startTone(ToneGenerator.TONE_PROP_BEEP,90);}catch(RuntimeException ignored){}
-            },i*190L);
-        }catch(RuntimeException ignored){}
+    private void playNativeAlert(boolean pothole){
+        String type=configuration.optString(pothole?"potholeWave":"waveType","sine");
+        alarm.play((int)clamp(setting("volumePercent",70),0,100),type);
     }
     private long gpsSequence;
     private void sendSample(long now) {
@@ -452,8 +456,7 @@ public final class DriveMonitorService extends Service implements SensorEventLis
         ready=false;
         releaseAudioWakeLock();
         if(overlay!=null)overlay.hide();
-        audioHandler.removeCallbacksAndMessages(null);
-        if(alarm!=null){ alarm.release(); alarm=null; }
+        alarm.release();
         if(sensors!=null){ sensors.unregisterListener(this); sensors=null; }
         if(locations!=null){
             try{ locations.removeUpdates(this); }catch(SecurityException ignored){}

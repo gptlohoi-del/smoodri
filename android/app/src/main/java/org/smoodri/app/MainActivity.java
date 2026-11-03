@@ -44,6 +44,7 @@ public final class MainActivity extends Activity {
     private static final int REQ_NOTIFICATIONS = 1902;
     private WebView web;
     private NativePipView pipView;
+    private final NativeAlertPlayer previewAlert = new NativeAlertPlayer();
     private FrameLayout root;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable updateLoop = new Runnable() {
@@ -192,10 +193,15 @@ public final class MainActivity extends Activity {
         @JavascriptInterface public void requestOverlayPermission(){ runOnUiThread(()->requestOverlayPermissionPage()); }
         @JavascriptInterface public boolean canOverlay(){ return Settings.canDrawOverlays(MainActivity.this); }
         @JavascriptInterface public boolean monitoring(){ return DriveMonitorService.running(); }
-        @JavascriptInterface public void testNativeBeep(){
+        @JavascriptInterface public void testNativeBeep(){testNativeSound("normal",70,"sine");}
+        @JavascriptInterface public void testNativeSound(String kind,int volume,String style){
             runOnUiThread(()->{
-                if(DriveMonitorService.running())sendService(DriveMonitorService.ACTION_TEST_BEEP,null);
-                else Toast.makeText(MainActivity.this,"Nhấn BẮT ĐẦU trước khi nghe thử âm báo native.",Toast.LENGTH_SHORT).show();
+                if(DriveMonitorService.running()){
+                    Intent intent=new Intent(MainActivity.this,DriveMonitorService.class)
+                            .setAction(DriveMonitorService.ACTION_TEST_BEEP);
+                    intent.putExtra("soundKind", "pothole".equals(kind)?"pothole":"normal");
+                    startService(intent);
+                }else previewAlert.play(Math.max(0,Math.min(100,volume)),style);
             });
         }
         @JavascriptInterface public String overlayGeometry(){
@@ -208,12 +214,15 @@ public final class MainActivity extends Activity {
         @JavascriptInterface public String diagnostics(){
             org.json.JSONObject result=new org.json.JSONObject();
             try {
-                result.put("version","1.0.7");
+                result.put("version","1.0.8");
                 result.put("running",DriveMonitorService.running());
                 result.put("error",DriveMonitorService.lastStartError());
                 result.put("locationPermission",hasLocationPermission());
                 result.put("locationEnabled",isLocationEnabled());
                 result.put("overlayPermission",Settings.canDrawOverlays(MainActivity.this));
+                result.put("overlayVisible",DriveMonitorService.overlayVisible());
+                result.put("overlayError",DriveMonitorService.lastOverlayError());
+                result.put("audioError",DriveMonitorService.lastAudioError());
                 result.put("mode",floatingMode);
             }catch(Exception ignored){}
             return result.toString();
@@ -308,6 +317,20 @@ public final class MainActivity extends Activity {
             Toast.makeText(this,"Không mở được trang cấp quyền Overlay.",Toast.LENGTH_LONG).show();
         }
     }
+    /** Put the Activity behind other apps before requesting TYPE_APPLICATION_OVERLAY.
+     * This avoids the foreground onResume() cleanup racing with addView().
+     */
+    private void showOverlayInBackground(){
+        if(!moveTaskToBack(true)){
+            Toast.makeText(this,"Android chưa cho phép đưa SmooDri ra nền.",Toast.LENGTH_LONG).show();
+            return;
+        }
+        handler.postDelayed(()->{
+            if(!uiForeground && DriveMonitorService.running() && "overlay".equals(floatingMode)
+                    && Settings.canDrawOverlays(this))
+                sendService(DriveMonitorService.ACTION_OVERLAY_SHOW,null);
+        },400);
+    }
     private void openFloating() {
         if("audio".equals(floatingMode)){
             if(!DriveMonitorService.running()){
@@ -328,8 +351,7 @@ public final class MainActivity extends Activity {
                 pendingOverlayAfterPermission=true;
                 requestOverlayPermissionPage();return;
             }
-            sendService(DriveMonitorService.ACTION_OVERLAY_SHOW,null);
-            moveTaskToBack(true);
+            showOverlayInBackground();
         }else openPip(true);
     }
     private void openPip(boolean userInitiated){
@@ -368,8 +390,7 @@ public final class MainActivity extends Activity {
             if(DriveMonitorService.running() && "overlay".equals(floatingMode) && Settings.canDrawOverlays(this)){
                 handler.postDelayed(()->{
                     if(!isFinishing() && DriveMonitorService.running()){
-                        sendService(DriveMonitorService.ACTION_OVERLAY_SHOW,null);
-                        moveTaskToBack(true);
+                        showOverlayInBackground();
                     }
                 },400);
             }else Toast.makeText(this,"Overlay chưa được cấp quyền hoặc dịch vụ đã dừng.",Toast.LENGTH_LONG).show();
@@ -388,7 +409,10 @@ public final class MainActivity extends Activity {
         super.onUserLeaveHint();
         if(!DriveMonitorService.running() || openingOverlayPermission)return;
         if("overlay".equals(floatingMode)) {
-            if(Settings.canDrawOverlays(this))sendService(DriveMonitorService.ACTION_OVERLAY_SHOW,null);
+            if(Settings.canDrawOverlays(this))handler.postDelayed(()->{
+                if(!uiForeground && DriveMonitorService.running() && "overlay".equals(floatingMode))
+                    sendService(DriveMonitorService.ACTION_OVERLAY_SHOW,null);
+            },400);
         } else if("pip".equals(floatingMode) && Build.VERSION.SDK_INT>=26 && !isInPictureInPictureMode())openPip(false);
     }
     @Override public void onPictureInPictureModeChanged(boolean inPip,Configuration c){
@@ -428,6 +452,7 @@ public final class MainActivity extends Activity {
     @Override protected void onDestroy(){
         handler.removeCallbacks(updateLoop);
         if(isFinishing())stopService(new Intent(this,DriveMonitorService.class));
+        previewAlert.release();
         if(web!=null){root.removeView(web);web.destroy();web=null;}
         super.onDestroy();
     }

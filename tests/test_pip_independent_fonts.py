@@ -43,5 +43,5 @@ class PiPIndependentFonts(unittest.TestCase):
         self.assertNotIn('scoreFontSize',app)
     def test_apk_version_bumped(self):
         gradle=(ROOT/'android/app/build.gradle').read_text()
-        self.assertIn('versionCode 8',gradle)
-        self.assertIn("versionName '1.0.7'",gradle)
+        self.assertIn('versionCode 9',gradle)
+        self.assertIn("versionName '1.0.8'",gradle)

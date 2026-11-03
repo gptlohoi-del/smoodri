@@ -10,6 +10,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
@@ -35,6 +36,8 @@ final class NativeOverlayController {
     private NativePipView content;
     private WindowManager.LayoutParams window;
     private int requestedWidth = 320, requestedHeight = 260;
+    private String lastError = "";
+    String lastError(){return lastError;}
     private final Runnable frameUpdater = new Runnable() {
         @Override public void run() {
             if (root != null && content != null) {
@@ -151,8 +154,12 @@ final class NativeOverlayController {
         });
     }
     boolean show() {
-        if(root!=null)return true;
-        if(manager==null || !Settings.canDrawOverlays(service))return false;
+        if(root!=null){lastError="";return true;}
+        if(manager==null){ lastError="WindowManager không khả dụng.";return false; }
+        if(!Settings.canDrawOverlays(service)){
+            lastError="Android chưa cấp quyền Hiển thị trên ứng dụng khác.";
+            return false;
+        }
         window = new WindowManager.LayoutParams(
                 allowedWidth(dp(requestedWidth)),
                 allowedHeight(dp(requestedHeight)),
@@ -213,8 +220,13 @@ final class NativeOverlayController {
             handler.removeCallbacks(frameUpdater);
             handler.post(frameUpdater);
             persistGeometry();
+            lastError="";
             return true;
         } catch (RuntimeException error) {
+            lastError="Android từ chối tạo Overlay ("+error.getClass().getSimpleName()+"): "+
+                (error.getMessage()==null?"không có chi tiết":error.getMessage());
+            Log.e("SmooDriOverlay", lastError, error);
+            handler.removeCallbacks(frameUpdater);
             root=null;content=null;window=null;
             return false;
         }

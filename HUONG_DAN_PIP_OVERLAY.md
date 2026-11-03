@@ -1,3 +1,5 @@
+> **Cập nhật v1.0.8:** Khi nhấn Overlay, Activity được đưa ra nền trước rồi dịch vụ mới yêu cầu tạo cửa sổ. Nếu không xuất hiện, xem **KIỂM TRA ANDROID** để đọc `Lỗi Overlay`. PiP, Overlay và Chỉ âm thanh nền dùng chung 4 tiếng bíp native; nghe thử được trong SETTING. Xem `HUONG_DAN_SUA_LOI_V1_0_8.md`.
+
 # PiP, Overlay và Chỉ âm thanh nền (v1.0.7)
 
 Mở **CÀI ĐẶT CHUNG → Kiểu cửa sổ khi ra màn hình ngoài** và chọn:

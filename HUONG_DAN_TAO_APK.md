@@ -1,3 +1,5 @@
+> **v1.0.8:** Build APK mới vì có thêm `NativeAlertPlayer.java` và sửa Overlay native. Sau khi build thành công, tải `SmooDri-v1.0.8-debug.apk`. Xem `HUONG_DAN_SUA_LOI_V1_0_8.md`.
+
 # HƯỚNG DẪN TẠO APK SMOODRI (CÓ PiP NATIVE)
 
 Repo hiện bao gồm Android native **Foreground Service + PiP**, giao diện One View và OTA web.

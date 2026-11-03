@@ -1,3 +1,9 @@
+# SmooDri v1.0.8 — Cải thiện Overlay và đồng bộ âm báo Android
+
+**Thay đổi chính:** Overlay được tạo sau khi đưa ứng dụng về nền; nếu Android từ chối, nguyên nhân được hiển thị trong **KIỂM TRA ANDROID**. PiP, Overlay, âm thanh nền và ứng dụng đang mở dùng cùng bộ phát bốn tiếng bíp native `NativeAlertPlayer`, tránh âm hệ thống ngắn/bị chồng tiếng với Web Audio. Hỗ trợ nghe thử khi chưa BẮT ĐẦU. Xem [HUONG_DAN_SUA_LOI_V1_0_8.md](HUONG_DAN_SUA_LOI_V1_0_8.md).
+
+**Phiên bản APK:** `1.0.8` (`versionCode 9`). Thay đổi native cần build APK mới; OTA web không thể thay code Java. PiP vẫn là chế độ dự phòng nếu quyền Overlay bị quản trị viên chặn.
+
 # SmooDri v1.0.7 — Sửa PiP / Overlay / âm thanh nền và GPS
 
 **Bản sửa 1.0.7:** Chờ Foreground Service thật sự khởi động, dùng GPS native để không báo sai quyền WebView, chuyển tiếng bíp nền qua âm lượng Media, bổ sung KIỂM TRA ANDROID trong SETTING và bỏ `km/h` màu đen. Xem [HUONG_DAN_SUA_LOI_V1_0_7.md](HUONG_DAN_SUA_LOI_V1_0_7.md).
@@ -26,7 +32,7 @@ Phiên bản này giữ One View, OTA, Foreground Service, PiP và Overlay, bổ
 - PiP native và Overlay: `MainActivity.java`, `DriveMonitorService.java`, `NativePipView.java`, `NativeOverlayController.java`, `AndroidManifest.xml`.
 - **Mới 1.0.6:** Trong SETTING chọn PiP / Overlay / Chỉ âm thanh nền. Overlay chỉnh kích thước dp và kéo/thu phóng trực tiếp; cần quyền SYSTEM_ALERT_WINDOW. PiP/Overlay mặc định hiển thị TỐC ĐỘ, TRẠNG THÁI và CỐC G. Xem `HUONG_DAN_PIP_OVERLAY.md`.
 - **Mới 1.0.4:** Bỏ giới hạn MIN/MAX ẩn trong CÀI ĐẶT NÂNG CAO (23 thông số số); Android native nhận cỡ chữ PiP lớn hơn ngưỡng cũ. Khôi phục cấu hình gốc vẫn hoạt động.
-- **Từ 1.0.3:** PiP có 6 cỡ chữ độc lập (Tốc độ, GA, Phanh, Cua, Ổ gà, GPS); bỏ Điểm chuyến đi tích lũy trên Web và PiP, giữ Điểm hiện tại ở One View.
+- **Lịch sử 1.0.3:** PiP có 6 cỡ chữ độc lập (Tốc độ, GA, Phanh, Cua, Ổ gà, GPS). Đến 1.0.6 đã bỏ toàn bộ Điểm êm ái khỏi giao diện và thuật toán.
 - Cách sử dụng và kiểm tra: `HUONG_DAN_PIP_OTA_HOP_NHAT.md`.
 
 ---

@@ -23,9 +23,9 @@ class CompactFloatingModes(unittest.TestCase):
         self.assertIn('builder.setAutoEnterEnabled("pip".equals(floatingMode)',activity)
         self.assertIn('"pip".equals(floatingMode) && Build.VERSION.SDK_INT>=26',activity)
         service=(JAVA/'DriveMonitorService.java').read_text()
-        self.assertIn('MainActivity.uiForeground',service)
+        self.assertIn('configuration.optBoolean("soundEnabled",true)',service)
         self.assertIn('soundEnabled',service)
-        self.assertIn('ToneGenerator',service)
+        self.assertIn('NativeAlertPlayer',service)
         self.assertIn('startForeground(',service)
     def test_native_status_and_live_cup(self):
         service=(JAVA/'DriveMonitorService.java').read_text()

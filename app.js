@@ -35,6 +35,11 @@ window.SmooDriNative = {
         syncFloatingSettings();saveConfig();
       }
       updateOverlayPermissionStatus();
+      if(typeof window.SmooDriAndroid.diagnostics==='function') {
+        const diagnostics=JSON.parse(window.SmooDriAndroid.diagnostics());
+        if(diagnostics.mode==='overlay' && diagnostics.overlayError)
+          setBanner('OVERLAY CHƯA MỞ', diagnostics.overlayError, 'warn-100');
+      }
     }catch(error){console.warn('Không đồng bộ được cửa sổ Overlay',error);}
   },
   onOverlayPermission(granted) {updateOverlayPermissionStatus(granted);}
@@ -641,7 +646,9 @@ function potholeBurst() {
   tone(600, 95, 135, config.potholeWave);
 }
 function handleSoundAlerts(now, { drivingPct, potholePct, potholeNew, weaving }) {
-  if (!config.soundEnabled) return;
+  // Android Foreground Service now owns the same four-beep alert in ALL modes.
+  // Never overlap the native sound with a second Web Audio oscillator.
+  if (IS_NATIVE_ANDROID || !config.soundEnabled) return;
   if (weaving) {
     if (now - lastWeaveBurst >= 1900) { lastWeaveBurst = now; burst('square', 2000); }
   } else if (potholeNew && potholePct >= 100) {
@@ -962,7 +969,10 @@ $('btnAndroidDiagnostics').addEventListener('click',()=>{
       `Quyền Vị trí: ${d.locationPermission?'ĐÃ CẤP':'CHƯA CẤP'} · `+
       `GPS hệ thống: ${d.locationEnabled?'ĐÃ BẬT':'ĐÃ TẮT'} · `+
       `Quyền Overlay: ${d.overlayPermission?'ĐÃ CẤP':'CHƯA CẤP'} · `+
-      `Chế độ: ${d.mode||'?'}${d.error?' · Lỗi: '+d.error:''}`;
+      `Overlay: ${d.overlayVisible?'ĐANG HIỂN THỊ':'CHƯA HIỂN THỊ'} · `+
+      `Chế độ: ${d.mode||'?'}${d.error?' · Lỗi dịch vụ: '+d.error:''}`+
+      `${d.overlayError?' · Lỗi Overlay: '+d.overlayError:''}`+
+      `${d.audioError?' · Lỗi âm thanh: '+d.audioError:''}`;
   } catch(error){output.textContent='Không đọc được trạng thái Android: '+error.message;}
 });
 if (IS_NATIVE_ANDROID) {
@@ -1011,16 +1021,18 @@ for (const wave of ['square', 'triangle', 'sine']) {
 }
 for (const wave of ['sawtooth', 'square', 'sine']) {
   $({sawtooth:'btnPotholeSaw',square:'btnPotholeSquare',sine:'btnPotholeSine'}[wave]).addEventListener('click', () => {
-    applyPotholeWave(wave); if (config.soundEnabled) potholeBurst();
+    applyPotholeWave(wave); if (config.soundEnabled) previewSmooDriSound('pothole', potholeBurst);
   });
 }
-$('btnTestBeepHigh').addEventListener('click', () => {
-  if(IS_NATIVE_ANDROID && typeof window.SmooDriAndroid.testNativeBeep==='function'
-     && window.SmooDriAndroid.monitoring()) {
+function previewSmooDriSound(kind, fallback) {
+  if(IS_NATIVE_ANDROID && typeof window.SmooDriAndroid.testNativeSound==='function') {
+    window.SmooDriAndroid.testNativeSound(kind, Math.max(0, Math.min(100, Math.round(Number(config.volumePercent)||70))), kind==='pothole'?config.potholeWave:config.waveType);
+  } else if(IS_NATIVE_ANDROID && typeof window.SmooDriAndroid.testNativeBeep==='function') {
     window.SmooDriAndroid.testNativeBeep();
-  } else burst();
-});
-$('btnTestPothole').addEventListener('click', potholeBurst);
+  } else fallback();
+}
+$('btnTestBeepHigh').addEventListener('click', () => previewSmooDriSound('normal', () => burst()));
+$('btnTestPothole').addEventListener('click', () => previewSmooDriSound('pothole', potholeBurst));
 function bindSliders() {
   bindNumericSlider('rngVolumeBoost', 'lblVolumeBoost', 'volumePercent', '%', 0);
   bindNumericSlider('rngStartDelay', 'lblStartDelay', 'startDelay', ' giây', 1);
