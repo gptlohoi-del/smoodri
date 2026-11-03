@@ -1,0 +1,22 @@
+KHI CẬP NHẬT TỪ SMOODRI 1.0.8 SANG 1.0.9:
+
+BẮT BUỘC XÓA 2 FILE JAVA CŨ SAU KHỎI GITHUB:
+android/app/src/main/java/org/smoodri/app/NativePipView.java
+android/app/src/main/java/org/smoodri/app/NativeOverlayController.java
+
+Nếu không xóa, Gradle vẫn có thể biên dịch chúng và báo lỗi do API của
+DriveMonitorService 1.0.9 không còn phần PiP/Overlay.
+
+NÊN XÓA CÁC TEST CHỈ DÀNH CHO PIP/OVERLAY CŨ (đã thay bằng test_audio_only.py):
+tests/test_compact_modes.py
+tests/test_native_integration.py
+tests/test_overlay_integration.py
+tests/test_pip_independent_fonts.py
+tests/test_unrestricted_ranges.py
+tests/test_v107_native_reliability.py
+tests/test_v108_overlay_audio.py
+
+Các hướng dẫn cũ liên quan đến PiP / Overlay cũng có thể xóa. ZIP repo
+hoàn chỉnh không còn các file này.
+
+HÃY CHẠY PUBLISH SMOODRI WEB OTA (PAGES) TRƯỚC, BUILD SMOODRI APK SAU.

@@ -35,7 +35,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Test OTA build
-        run: python3 -m unittest discover -s tests -p 'test_*.py' -v
+        run: python3 -m unittest discover -s tests -p 'test_audio_only.py' -v && python3 -m unittest discover -s tests -p 'test_web_ota.py' -v
       - name: Create versioned OTA website
         shell: bash
         run: |

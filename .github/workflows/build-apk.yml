@@ -18,8 +18,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Verify PiP and OTA integration
-        run: python3 -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Verify audio-only background service and OTA integration
+        run: python3 -m unittest discover -s tests -p 'test_audio_only.py' -v && python3 -m unittest discover -s tests -p 'test_web_ota.py' -v
 
       - name: Java 17
         uses: actions/setup-java@v4

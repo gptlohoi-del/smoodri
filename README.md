@@ -1,79 +1,40 @@
-# SmooDri v1.0.8 — Cải thiện Overlay và đồng bộ âm báo Android
+# SmooDri v1.0.9 — Chỉ cảnh báo âm thanh dưới nền
 
-**Thay đổi chính:** Overlay được tạo sau khi đưa ứng dụng về nền; nếu Android từ chối, nguyên nhân được hiển thị trong **KIỂM TRA ANDROID**. PiP, Overlay, âm thanh nền và ứng dụng đang mở dùng cùng bộ phát bốn tiếng bíp native `NativeAlertPlayer`, tránh âm hệ thống ngắn/bị chồng tiếng với Web Audio. Hỗ trợ nghe thử khi chưa BẮT ĐẦU. Xem [HUONG_DAN_SUA_LOI_V1_0_8.md](HUONG_DAN_SUA_LOI_V1_0_8.md).
+Bản này được xây dựng từ ZIP `smoodri-main (1)(2).zip` mà người dùng cung cấp. Mục tiêu là **giữ ứng dụng One View khi mở** và **chỉ phát cảnh báo âm thanh khi chuyển ra nền**, không còn PiP hay Overlay.
 
-**Phiên bản APK:** `1.0.8` (`versionCode 9`). Thay đổi native cần build APK mới; OTA web không thể thay code Java. PiP vẫn là chế độ dự phòng nếu quyền Overlay bị quản trị viên chặn.
+## Những gì đã thay đổi
 
-# SmooDri v1.0.7 — Sửa PiP / Overlay / âm thanh nền và GPS
+- **Bỏ PiP và Overlay hoàn toàn** khỏi SETTING, AndroidManifest, cầu nối WebView và các lớp Java native. Xóa `NativePipView.java` và `NativeOverlayController.java`.
+- Khi màn hình SmooDri **đang mở**, Web Audio phát âm thanh gốc: **4 bíp** nhanh luân phiên 1550/1900 Hz, 60 ms/tiếng, cách nhau 105 ms (kiểu âm đã chọn trong SETTING). Cảnh báo ổ gà là **2 tiếng** 850/600 Hz, 95 ms/tiếng, cách nhau 135 ms. Lắc ngang liên tục phát 4 bíp ở 2000 Hz.
+- Khi SmooDri **đang chạy nền**, `DriveMonitorService` tiếp tục nhận cảm biến và `NativeAlertPlayer` tổng hợp PCM có **cùng tần số, hình dạng sóng, nhịp bíp và tỷ lệ âm lượng**. Web Audio không phát cùng lúc để tránh tiếng chồng.
+- Có hai nút để so sánh ngay trong SETTING: **NGHE THỬ 4 TIẾNG BÍP** (Web Audio), **NGHE THỬ ÂM NỀN ANDROID** (native). Nút native chỉ hiện trong APK.
+- Không buộc GPS phải được cấp quyền hoặc bật khi khởi động **cảnh báo gia tốc**. GPS/tốc độ chỉ là tính năng bổ sung nếu thiết bị cấp quyền.
+- Giữ giao diện One View, CÀI ĐẶT CHUNG, CHỈNH GIAO DIỆN TRỰC TIẾP, thanh trượt +/−, MIN/MAX/STEP/DEFAULT, lưu cài đặt `smoodri_cfg_v8` và OTA web.
+- **Android Foreground Service** sử dụng `specialUse` cho tác vụ cảnh báo gia tốc liên tục do người dùng chủ động kích hoạt. Có thông báo Android và nút dừng. Xem [tài liệu Android](https://developer.android.com/develop/background-work/services/fgs/service-types).
 
-**Bản sửa 1.0.7:** Chờ Foreground Service thật sự khởi động, dùng GPS native để không báo sai quyền WebView, chuyển tiếng bíp nền qua âm lượng Media, bổ sung KIỂM TRA ANDROID trong SETTING và bỏ `km/h` màu đen. Xem [HUONG_DAN_SUA_LOI_V1_0_7.md](HUONG_DAN_SUA_LOI_V1_0_7.md).
+## Cách sử dụng
 
-# SmooDri v1.0.6 — TỐC ĐỘ / TRẠNG THÁI / CỐC G + âm thanh nền
+1. Mở SmooDri, vào SETTING, bật **ÂM THANH CẢNH BÁO** và đặt âm lượng Media của điện thoại.
+2. Nhấn **NGHE THỬ 4 TIẾNG BÍP** (Web Audio); trong APK nhấn tiếp **NGHE THỬ ÂM NỀN ANDROID** để so sánh.
+3. Nhấn **BẮT ĐẦU**, đặt điện thoại cố định, đứng yên trong thời gian cân chỉnh.
+4. Nhấn **Home** hoặc nút **♪ CHẠY NỀN**. Không có cửa sổ nhỏ hiện ra; dịch vụ tiếp tục chạy và phát cảnh báo **chỉ khi vượt ngưỡng**.
+5. Quay lại SmooDri, nhấn **DỪNG**; hoặc nhấn **Dừng theo dõi** trên thông báo Android.
 
-Phiên bản này giữ One View, OTA, Foreground Service, PiP và Overlay, bổ sung chế độ thứ ba **Chỉ âm thanh nền** (không hiện cửa sổ nổi). Bố cục PiP/Overlay mặc định chỉ có TỐC ĐỘ, TRẠNG THÁI, CỐC G-force; có thể bật riêng các chỉ số GA/PHANH/CUA/Ổ GÀ/GPS.
+Không có âm thanh liên tục khi xe vận hành êm ái. **Nghe thử có tiếng** không có nghĩa cảnh báo sẽ phát liên tục; phải có cảm biến thực và vượt ngưỡng.
 
-**Đã loại bỏ hoàn toàn hệ thống điểm êm ái và cài đặt hồi phục điểm.** Nút MỨC ÊM ÁI vẫn tồn tại vì nó dùng để chỉnh độ nhạy của các ngưỡng cảnh báo, không phải điểm số.
+Trên điện thoại bị quản trị hoặc hệ thống tiết kiệm pin mạnh, dịch vụ có thể bị chặn; hãy kiểm tra quyền thông báo và phần **KIỂM TRA DỊCH VỤ & ÂM THANH**. Dùng tính năng khi xe dừng để cấu hình, không thao tác điện thoại khi đang lái.
 
-- TỐC ĐỘ: bật/tắt và chỉnh cỡ chữ riêng.
-- TRẠNG THÁI: bật/tắt, cỡ chữ, thời gian giữ cảnh báo theo `alertHoldTime`.
-- CỐC G: bật/tắt, đường kính và vị trí G-force theo dữ liệu cảm biến native.
-- PiP/Overlay: có thêm các thông số chi tiết khi cần.
-- Chỉ âm thanh nền: sau BẮT ĐẦU, nhấn nút ♪ NỀN hoặc Home để về màn hình ngoài. Foreground Service vẫn đo và phát âm báo khi vượt ngưỡng (cần bật âm báo và cấp quyền thích hợp).
-- Bản giao diện thuần web không tự tạo nền native trên trình duyệt. Các tính năng Android native yêu cầu build lại APK.
+## Phát hành GitHub
 
-**Lưu ý an toàn:** Đây là thông tin tham khảo, không phải thiết bị bảo đảm an toàn giao thông. Không nhìn hoặc điều chỉnh ứng dụng trong lúc lái xe.
+- Trước tiên **Publish SmooDri Web OTA (Pages)** thành công để trang web có giao diện và JavaScript mới.
+- Sau đó chạy **Build SmooDri APK**. Bản 1.0.9 cần APK mới do Android `MainActivity`, Foreground Service, Manifest và bộ phát âm đã thay đổi.
+- APK dự kiến: `SmooDri-v1.0.9-debug.apk`. Chữ ký debug có thể thay đổi giữa các lần GitHub Actions build; cân nhắc khóa release cố định nếu cần cài đè lâu dài.
+- Không sửa `sw.js` bằng tay nếu không cần; workflow OTA tự quản lý version/cache.
 
-# SmooDri — APK native PiP / Overlay + Foreground Service + OTA web
+**Rất quan trọng khi tải file thủ công lên repo đã tồn tại:** ngoài ghi đè các file mới, bạn còn phải **xóa hai file Java cũ** ở `android/app/src/main/java/org/smoodri/app/`: `NativePipView.java`, `NativeOverlayController.java`. Nếu không xóa, Gradle vẫn biên dịch chúng và có thể báo lỗi.
 
-**Bản hợp nhất 1.0.6:** Phiên bản này kết hợp mã web One View, cài đặt chung/chỉnh trực tiếp, OTA qua GitHub Pages và phần Android native PiP/Foreground Service. Không thay thế folder `android` bằng một bản OTA web cũ không có PiP.
+Xem thêm [HUONG_DAN_AM_THANH_NEN.md](HUONG_DAN_AM_THANH_NEN.md) và [FILES_TO_DELETE_ON_GITHUB.txt](FILES_TO_DELETE_ON_GITHUB.txt).
 
-- APK `SmooDri-v1.0.6-debug.apk` được tạo khi chạy `.github/workflows/build-apk.yml` (nếu build thành công).
-- Cập nhật giao diện web: `.github/workflows/deploy-web-ota.yml` → Pages.
-- PiP native và Overlay: `MainActivity.java`, `DriveMonitorService.java`, `NativePipView.java`, `NativeOverlayController.java`, `AndroidManifest.xml`.
-- **Mới 1.0.6:** Trong SETTING chọn PiP / Overlay / Chỉ âm thanh nền. Overlay chỉnh kích thước dp và kéo/thu phóng trực tiếp; cần quyền SYSTEM_ALERT_WINDOW. PiP/Overlay mặc định hiển thị TỐC ĐỘ, TRẠNG THÁI và CỐC G. Xem `HUONG_DAN_PIP_OVERLAY.md`.
-- **Mới 1.0.4:** Bỏ giới hạn MIN/MAX ẩn trong CÀI ĐẶT NÂNG CAO (23 thông số số); Android native nhận cỡ chữ PiP lớn hơn ngưỡng cũ. Khôi phục cấu hình gốc vẫn hoạt động.
-- **Lịch sử 1.0.3:** PiP có 6 cỡ chữ độc lập (Tốc độ, GA, Phanh, Cua, Ổ gà, GPS). Đến 1.0.6 đã bỏ toàn bộ Điểm êm ái khỏi giao diện và thuật toán.
-- Cách sử dụng và kiểm tra: `HUONG_DAN_PIP_OTA_HOP_NHAT.md`.
+## Kiểm tra và giới hạn
 
----
-
-# SmooDri 8.0 — Trợ lý lái xe êm ái
-
-## Cài đặt / cập nhật
-
-1. Sao lưu phiên bản trước.
-2. Giải nén và **tải toàn bộ nội dung trong thư mục `smoodri-main`** lên thư mục gốc website (hoặc cùng đường dẫn với bản cũ). Giữ nguyên cấu trúc thư mục `icons/`.
-3. Mở website bằng **HTTPS** (ví dụ GitHub Pages). Cảm biến trên điện thoại có thể không hoạt động qua HTTP hoặc khi chưa được cấp quyền.
-4. Tắt/mở lại tab hoặc ứng dụng đã cài để nhận bản cập nhật. Nếu màn hình vẫn là bản cũ, đóng mọi tab của ứng dụng rồi mở lại trực tuyến.
-5. Cố định điện thoại và **dừng xe** khi bấm Bắt đầu/cân chỉnh lại 0G. Không thao tác ứng dụng trong lúc điều khiển xe.
-
-## Thay đổi chính
-
-- Nút **− / +** thay đổi mức độ êm ái theo bước 5, trong khoảng 20–100. **+** yêu cầu êm hơn (ngưỡng G thấp hơn), **−** linh hoạt hơn (ngưỡng G cao hơn).
-- Bỏ cài đặt ngưỡng bắt đầu phát tiếng bíp, cảnh báo phát từ **100%** của từng chỉ số. Âm cảnh báo được giới hạn cường độ và có khoảng nghỉ.
-- Trong cài đặt có thể chọn 1–4 thanh hiển thị, ở cả Thanh ngang và Vòng tròn. **Ẩn thanh không dừng đo, tính điểm và cảnh báo**.
-- Chế độ cài đặt nâng cao có 5 ngưỡng G/G/s riêng. Điều chỉnh các giá trị này chuyển sang `Tùy chỉnh`; nút ± hoặc thanh mức êm ái sẽ áp dụng lại ngưỡng đồng bộ.
-- Chỉ hiển thị **Điểm hiện tại** (có hồi phục); bỏ Điểm chuyến đi tích lũy ở One View và PiP. Đây là thuật toán đánh giá thử nghiệm, chưa được chuẩn hóa.
-- Cân chỉnh trung bình nhiều mẫu sau thời gian chờ, phát hiện mất dữ liệu cảm biến, không nhận diện lạng lách chỉ từ một cú cua hoặc một đỉnh jerk.
-- Độ dốc chỉ hiển thị dạng **tương đối / ước tính** khi có dữ liệu gia tốc tuyến tính; không coi là đo độ dốc tuyệt đối.
-- Icon PNG/SVG cục bộ và Service Worker cache phiên bản 8 hỗ trợ hoạt động offline sau khi tải trọn các tệp cốt lõi.
-
-## Lưu ý quan trọng
-
-- Không thể kiểm định độ chính xác lực G, độ dốc và mức êm ái nếu chưa thử trên thiết bị thật, ở các vị trí đặt điện thoại và loại đường/xe khác nhau.
-- Độ dốc tuyệt đối, tư thế lắp điện thoại, độ ổn định cảm biến, hạn chế hoạt động nền và phát âm thanh phụ thuộc thiết bị/trình duyệt.
-- Kết quả chỉ để tham khảo, không dùng để quyết định tốc độ lái an toàn.
-- Dữ liệu cài đặt dùng `localStorage` ở khóa `smoodri_cfg_v8`; chương trình đọc lại bản cũ `smoodri_cfg_v7` nếu có.
-
-## Danh sách file
-
-- `index.html`: màn hình chính và cài đặt
-- `style.css`: giao diện và bố cục mobile one-view
-- `app.js`: đo cảm biến, đánh giá, cảnh báo và lưu cài đặt
-- `manifest.json`: cài đặt PWA
-- `sw.js`: cache offline
-- `icons/`: icon PNG chuẩn và SVG nguồn
-
-## Cập nhật OTA tự động qua GitHub Pages
-
-Đã tích hợp workflow `Publish SmooDri Web OTA (Pages)` và mục cập nhật trong CÀI ĐẶT CHUNG. Xem [`HUONG_DAN_OTA_SMOODRI.md`](HUONG_DAN_OTA_SMOODRI.md) để bật GitHub Pages (Source: GitHub Actions), kiểm tra offline và phân biệt cập nhật web với APK native.
+Đã kiểm tra cú pháp JS, các ID HTML, 13 bài kiểm tra source/OTA và biên dịch riêng bộ phát âm native với các lớp Android mô phỏng. **Chưa build được APK hoàn chỉnh bằng Android SDK hoặc nghe âm thanh trên điện thoại thật.** Cần xác nhận bằng GitHub Actions và máy Android.

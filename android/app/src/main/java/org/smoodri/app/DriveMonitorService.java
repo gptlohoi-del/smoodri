@@ -9,7 +9,6 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.content.pm.ServiceInfo;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -22,19 +21,14 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.os.PowerManager;
 import android.os.SystemClock;
-import org.json.JSONArray;
 import org.json.JSONObject;
 import java.util.ArrayDeque;
-import java.util.Locale;
 
 /** Android-owned sampling independent of WebView visibility; limited wake lock for audio-only mode. */
 public final class DriveMonitorService extends Service implements SensorEventListener, LocationListener {
     public static final String ACTION_START = "org.smoodri.app.START";
     public static final String ACTION_STOP = "org.smoodri.app.STOP";
     public static final String ACTION_SETTINGS = "org.smoodri.app.SETTINGS";
-    public static final String ACTION_OVERLAY_SHOW = "org.smoodri.app.OVERLAY_SHOW";
-    public static final String ACTION_OVERLAY_HIDE = "org.smoodri.app.OVERLAY_HIDE";
-    public static final String ACTION_TEST_BEEP = "org.smoodri.app.TEST_BEEP";
     public static final String EXTRA_SETTINGS = "settings";
     private static final String CHANNEL_ID = "smoodri_monitor_v1";
     private static final int NOTIFICATION_ID = 2026;
@@ -43,60 +37,20 @@ public final class DriveMonitorService extends Service implements SensorEventLis
     private static volatile String startError="";
     private volatile boolean ready;
     public static String lastStartError(){return startError;}
-    public static String lastOverlayError(){return overlayError;}
-    public static boolean overlayVisible(){
-        DriveMonitorService svc=instance;
-        return svc!=null && svc.overlay!=null && svc.overlay.isVisible();
-    }
-    public static String lastAudioError(){
-        DriveMonitorService svc=instance;
-        return svc==null?"":svc.alarm.lastError();
-    }
-    private static volatile Snapshot lastSnapshot = new Snapshot();
+    private static volatile boolean uiVisible=true;
+    public static void setUiVisible(boolean visible){uiVisible=visible;}
+    public static boolean isUiVisible(){return uiVisible;}
+    public static String lastAudioError(){DriveMonitorService svc=instance;return svc==null?"":svc.alarm.lastError();}
+    private static volatile String lastAlertLabel="CHƯA CÓ";
+    public static String lastAlert(){return lastAlertLabel;}
     private static volatile String lastSample = "";
     private static volatile long lastSampleSeq = 0;
 
     public static boolean running() { return instance != null && instance.ready; }
-    public static Snapshot snapshot() { return lastSnapshot; }
-    public static String lastSample() { return lastSample; }
-    public static long lastSampleSeq() { return lastSampleSeq; }
-
-    public static final class Snapshot {
-        public final boolean active, calibrated;
-        public final int ga, phanh, cua, xoc;
-        public final float speed, accuracy, hz, lateralG, longitudinalG, cupLimit;
-        public final String drivingStatus;
-        public final long gpsAgeMs, sensorAgeMs;
-        public final String pipRatio, bg, fg;
-        public final int speedFontSize, gaFontSize, phanhFontSize, cuaFontSize, xocFontSize, gpsFontSize;
-        public final int fontWeight, statusFontSize, cupSize;
-        public final String[] visible;
-        Snapshot() {
-            this(false, false, 0, 0, 0, 0, Float.NaN, Float.NaN, Float.NaN,
-                 Long.MAX_VALUE, Long.MAX_VALUE, "16:9", "#0d1a2d", "#ffffff",
-                 44, 22, 22, 22, 22, 19, 700, 25, 130,
-                 0f, 0f, .20f, "SẴN SÀNG", new String[] {"speed", "status", "cup"});
-        }
-        Snapshot(boolean active, boolean calibrated, int ga, int phanh, int cua, int xoc,
-                 float speed, float accuracy, float hz, long gpsAgeMs, long sensorAgeMs,
-                 String pipRatio, String bg, String fg, int speedFontSize, int gaFontSize,
-                 int phanhFontSize, int cuaFontSize, int xocFontSize, int gpsFontSize,
-                 int fontWeight, int statusFontSize, int cupSize,
-                 float lateralG, float longitudinalG, float cupLimit, String drivingStatus, String[] visible) {
-            this.active=active; this.calibrated=calibrated;
-            this.ga=ga; this.phanh=phanh; this.cua=cua; this.xoc=xoc;
-            this.speed=speed; this.accuracy=accuracy; this.hz=hz;
-            this.gpsAgeMs=gpsAgeMs; this.sensorAgeMs=sensorAgeMs;
-            this.pipRatio=pipRatio; this.bg=bg; this.fg=fg;
-            this.speedFontSize=speedFontSize; this.gaFontSize=gaFontSize;
-            this.phanhFontSize=phanhFontSize; this.cuaFontSize=cuaFontSize;
-            this.xocFontSize=xocFontSize; this.gpsFontSize=gpsFontSize;
-            this.fontWeight=fontWeight; this.statusFontSize=statusFontSize;
-            this.cupSize=cupSize; this.lateralG=lateralG; this.longitudinalG=longitudinalG;
-            this.cupLimit=cupLimit;
-            this.drivingStatus=drivingStatus; this.visible=visible;
-        }
-    }
+    public static String lastSample(){return lastSample;}
+    public static long lastSampleSeq(){return lastSampleSeq;}
+    public static boolean sensorReady(){return running();}
+    public static boolean soundEnabled(){DriveMonitorService svc=instance;return svc!=null&&svc.configuration.optBoolean("soundEnabled",true);}
 
     private SensorManager sensors;
     private LocationManager locations;
@@ -108,27 +62,21 @@ public final class DriveMonitorService extends Service implements SensorEventLis
     private final ArrayDeque<double[]> calibrationWindow = new ArrayDeque<>();
     private double smX, smLon, smVert, vertBaseline, slopeBaselineLon, prevX;
     private int ga, phanh, cua, xoc;
-    private String drivingStatus = "ÊM ÁI";
-    private long statusHoldUntil = 0;
-    private int lastStatusLevel = 0;
     private float speed = Float.NaN, accuracy = Float.NaN, hz = Float.NaN;
     private float previousSpeed = Float.NaN;
     private int lastSign;
     private long lastReversal;
     private final ArrayDeque<Long> reversals = new ArrayDeque<>();
     private JSONObject configuration = new JSONObject();
-    private long emitAt, lastAlert;
+    private long emitAt, lastNormalAudio=-10000, lastPotholeAudio=-10000, lastWeaveAudio=-10000;
     private final NativeAlertPlayer alarm = new NativeAlertPlayer();
-    private static volatile String overlayError = "";
     private PowerManager.WakeLock audioWakeLock;
-    private NativeOverlayController overlay;
 
     /** Keep the CPU sampling while audio-only is selected, even when the screen sleeps.
      * Not an auto-restart mechanism; stops with the session or if system restrictions apply.
      */
     private void updateAudioWakeLock(){
-        boolean required=sensors!=null && "audio".equals(configuration.optString("floatingMode","pip"))
-                && configuration.optBoolean("soundEnabled",true);
+        boolean required=sensors!=null && configuration.optBoolean("soundEnabled",true);
         if(required){
             try {
                 if(audioWakeLock==null){
@@ -150,59 +98,34 @@ public final class DriveMonitorService extends Service implements SensorEventLis
 
     @Override public void onCreate() {
         super.onCreate(); instance=this;
-        overlayError="";
-        overlay=new NativeOverlayController(this);
     }
 
-    void stopFromOverlay(){ shutdown(); }
     @Override public IBinder onBind(Intent intent) { return null; }
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
         String action = intent == null ? "" : intent.getAction();
         if (ACTION_STOP.equals(action)) { shutdown(); return START_NOT_STICKY; }
-        if (ACTION_OVERLAY_HIDE.equals(action)) {
-            if(overlay!=null)overlay.hide();
-            return START_NOT_STICKY;
-        }
-        if (ACTION_OVERLAY_SHOW.equals(action)) {
-            if(!ready) overlayError="Dịch vụ theo dõi chưa sẵn sàng.";
-            else if(!"overlay".equals(configuration.optString("floatingMode","pip")))
-                overlayError="Chế độ cửa sổ nổi chưa được chọn trong SETTING.";
-            else if(overlay!=null && overlay.show()) overlayError="";
-            else overlayError=overlay==null?"Không khởi tạo được cửa sổ nổi.":overlay.lastError();
-            return START_NOT_STICKY;
-        }
-        if (ACTION_TEST_BEEP.equals(action)) {
-            if(ready)playNativeAlert(intent!=null && "pothole".equals(intent.getStringExtra("soundKind")));
-            return START_NOT_STICKY;
-        }
         if (ACTION_SETTINGS.equals(action) && !ready) return START_NOT_STICKY;
         if (intent != null && intent.hasExtra(EXTRA_SETTINGS)) {
             try { configuration = new JSONObject(intent.getStringExtra(EXTRA_SETTINGS)); }
             catch (Exception ignored) { /* use previous defaults */ }
         }
-        if(overlay!=null)overlay.configure(configuration);
         if (ACTION_SETTINGS.equals(action) && sensors != null) {
             // Update settings for the single shared native alert player.
             updateAudioWakeLock();
-            publish(); return START_NOT_STICKY;
+            return START_NOT_STICKY;
         }
-        if (sensors != null) { updateAudioWakeLock();publish(); return START_NOT_STICKY; }
-        // For targetSdk 34, a location FGS needs location permission AND location enabled.
-        if (!hasLocationPermission() || !locationEnabled()) {
-            startError=!hasLocationPermission()?"Android chưa cấp quyền Vị trí cho SmooDri.":"Dịch vụ GPS/Vị trí đang tắt.";
-            shutdown(); return START_NOT_STICKY;
-        }
+        if (sensors != null) { updateAudioWakeLock(); return START_NOT_STICKY; }
+        // Cảm biến chuyển động không cần quyền GPS. Foreground Service specialUse
+        // phục vụ cảnh báo gia tốc liên tục do người dùng chủ động bật.
         startError="";
+        lastAlertLabel="CHƯA CÓ";
         createChannel();
         try {
-            Notification notification = createNotification();
-            if (Build.VERSION.SDK_INT >= 29) {
-                startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
-            } else startForeground(NOTIFICATION_ID, notification);
+            startForeground(NOTIFICATION_ID,createNotification());
         } catch (RuntimeException error) {
-            startError="Không thể bật dịch vụ nền: "+error.getClass().getSimpleName();
-            shutdown(); return START_NOT_STICKY;
+            startError="Không thể bật dịch vụ âm thanh nền: "+error.getClass().getSimpleName();
+            shutdown();return START_NOT_STICKY;
         }
         sensors = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         locations = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
@@ -223,13 +146,12 @@ public final class DriveMonitorService extends Service implements SensorEventLis
                 if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED
                         && locations.isProviderEnabled(LocationManager.GPS_PROVIDER))
                     locations.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 0, this, Looper.getMainLooper());
-                else if (locations.isProviderEnabled(LocationManager.NETWORK_PROVIDER))
+                else if (hasLocationPermission() && locations.isProviderEnabled(LocationManager.NETWORK_PROVIDER))
                     locations.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 0, this, Looper.getMainLooper());
             }
         } catch (SecurityException | IllegalArgumentException ignored) {}
         ready=true;
         updateAudioWakeLock();
-        publish();
         return START_NOT_STICKY;
     }
 
@@ -247,7 +169,7 @@ public final class DriveMonitorService extends Service implements SensorEventLis
     private void createChannel() {
         if (Build.VERSION.SDK_INT >= 26) {
             NotificationChannel ch = new NotificationChannel(CHANNEL_ID, "SmooDri đang theo dõi", NotificationManager.IMPORTANCE_LOW);
-            ch.setDescription("Cảm biến chuyển động và tốc độ GPS khi ứng dụng chạy nền");
+            ch.setDescription("Cảnh báo GA/PHANH/CUA/Ổ GÀ khi ứng dụng chạy nền");
             ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).createNotificationChannel(ch);
         }
     }
@@ -261,7 +183,7 @@ public final class DriveMonitorService extends Service implements SensorEventLis
         return new Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_menu_compass)
             .setContentTitle("SmooDri đang theo dõi")
-            .setContentText("Đo cảm biến và GPS · Chạm để mở ứng dụng")
+            .setContentText("Đang nghe cảm biến, phát cảnh báo khi vượt ngưỡng")
             .setContentIntent(openPi)
             .setOngoing(true)
             .addAction(new Notification.Action.Builder(null, "Dừng theo dõi", stopPi).build())
@@ -272,26 +194,6 @@ public final class DriveMonitorService extends Service implements SensorEventLis
     private double setting(String name, double fallback) {
         double v = configuration.optDouble(name, fallback);
         return Double.isFinite(v) ? v : fallback;
-    }
-    /** Giá trị cỡ chữ PiP không bị chặn bởi MAX ẩn trong Android.
-     * Chỉ yêu cầu kích thước dương, hữu hạn và biểu diễn được bằng int.
-     * Khi chữ vượt chiều rộng PiP, NativePipView tự co để vừa chỗ.
-     */
-    private int pipTextSize(String name, int fallback) {
-        double requested=setting(name,fallback);
-        if (!(requested > 0)) return fallback;
-        return (int)Math.min(Integer.MAX_VALUE, Math.round(requested));
-    }
-    private String color(String name, String fallback) {
-        String s = configuration.optString(name, fallback);
-        return s.matches("#[0-9a-fA-F]{6}") ? s : fallback;
-    }
-    private String[] visible() {
-        JSONArray a = configuration.optJSONArray("pipVisible");
-        if (a == null) return new String[] {"speed", "status", "cup"};
-        String[] result = new String[a.length()];
-        for (int i=0; i<a.length(); i++) result[i] = a.optString(i, "");
-        return result;
     }
     @Override public void onSensorChanged(SensorEvent event) {
         if (event.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION) {
@@ -319,8 +221,7 @@ public final class DriveMonitorService extends Service implements SensorEventLis
                 }
             }
             sendSample(now);
-            publish();
-            return;
+                return;
         }
         double dt = clamp((now-previousSample)/1000.0, 0.012, 0.15);
         previousSample = now;
@@ -359,39 +260,28 @@ public final class DriveMonitorService extends Service implements SensorEventLis
                 jerk>setting("maxJerk",0.24)*0.25) { lastReversal=now; reversals.addLast(now); }
         if (sign!=0) lastSign=sign;
         while (!reversals.isEmpty() && now-reversals.peekFirst()>3200) reversals.removeFirst();
-        // Trạng thái ngắn cho PiP/Overlay; giữ vài giây để không nhấp nháy liên tục.
-        // Ưu tiên mức vượt ngưỡng lớn nhất, nếu bằng nhau ưu tiên PHANH.
-        int highest=Math.max(Math.max(ga,phanh),Math.max(cua,xoc));
         boolean weaving=reversals.size()>=2;
-        int severity=Math.max(highest,weaving?110:0);
-        String eventName="ÊM ÁI";
-        if(weaving && highest<100)eventName="LẮC NGANG LIÊN TỤC";
-        if(highest>=100){
-            if(phanh==highest)eventName="PHANH GẤP";
-            else if(ga==highest)eventName="TĂNG GA MẠNH";
-            else if(cua==highest)eventName="VÀO CUA MẠNH";
-            else eventName="ĐƯỜNG XÓC";
-        }
-        if(severity>=100){
-            // Nếu đã có cảnh báo mạnh hơn đang giữ, không thay bằng cảnh báo nhẹ hơn.
-            if(now>=statusHoldUntil || severity>=lastStatusLevel){
-                drivingStatus=eventName;
-                lastStatusLevel=severity;
+        boolean potholeEvent=xoc>=100;
+        int driveMax=Math.max(ga,Math.max(phanh,cua));
+        // Web Audio phát khi người dùng đang mở ứng dụng. Chỉ khi WebView ẩn,
+        // Android mới phát PCM có cùng âm sắc/cao độ/nhịp, tránh âm chồng nhau.
+        if(!uiVisible && configuration.optBoolean("soundEnabled",true)) {
+            String kind=null;
+            if(weaving && now-lastWeaveAudio>=1900){
+                lastWeaveAudio=now;kind="weave";
+            }else if(!weaving && potholeEvent && now-lastPotholeAudio>=850){
+                lastPotholeAudio=now;kind="pothole";
+            }else if(!weaving && !potholeEvent && driveMax>=100 && now-lastNormalAudio>=2000){
+                lastNormalAudio=now;kind="normal";
             }
-            statusHoldUntil=now+(long)(Math.max(0,setting("alertHoldTime",3))*1000);
-        }else if(now>=statusHoldUntil){ drivingStatus="ÊM ÁI";lastStatusLevel=0; }
-        // One audio engine in the APK, whether foreground, PiP, Overlay or audio-only.
-        // Browser Web Audio is disabled in native mode to prevent two different alerts.
-        if(configuration.optBoolean("soundEnabled",true) && severity>=100 && now-lastAlert>5000) {
-            lastAlert=now;
-            playNativeAlert(xoc>=100 && xoc>=Math.max(ga,Math.max(phanh,cua)));
+            if(kind!=null){
+                String wave="pothole".equals(kind)?configuration.optString("potholeWave","sawtooth"):
+                    ("weave".equals(kind)?"square":configuration.optString("waveType","square"));
+                int volume=(int)clamp(setting("volumePercent",70),0,100);
+                if(alarm.play(kind,wave,volume))lastAlertLabel=kind+" ("+volume+"%)";
+            }
         }
         sendSample(now);
-        publish();
-    }
-    private void playNativeAlert(boolean pothole){
-        String type=configuration.optString(pothole?"potholeWave":"waveType","sine");
-        alarm.play((int)clamp(setting("volumePercent",70),0,100),type);
     }
     private long gpsSequence;
     private void sendSample(long now) {
@@ -419,26 +309,6 @@ public final class DriveMonitorService extends Service implements SensorEventLis
             lastSampleSeq++;
         } catch (Exception ignored) {}
     }
-    private void publish() {
-        long now=SystemClock.elapsedRealtime();
-        String ratio=configuration.optString("pipRatio","16:9");
-        if (!ratio.equals("16:9") && !ratio.equals("4:3") && !ratio.equals("1:1")) ratio="16:9";
-        int speedFont=pipTextSize("pipSpeedFontSize",44);
-        int gaFont=pipTextSize("pipGaFontSize",22);
-        int phanhFont=pipTextSize("pipPhanhFontSize",22);
-        int cuaFont=pipTextSize("pipCuaFontSize",22);
-        int xocFont=pipTextSize("pipXocFontSize",22);
-        int gpsFont=pipTextSize("pipGpsFontSize",19);
-        int statusFont=pipTextSize("pipStatusFontSize",25);
-        int cupSize=pipTextSize("pipCupSize",130);
-        String status=!calibrated?"ĐANG CÂN CHỈNH":(now-lastSensor>4000?"MẤT CẢM BIẾN":drivingStatus);
-        int weight=(int)clamp(setting("pipFontWeight",700),500,800);
-        lastSnapshot=new Snapshot(true,calibrated,ga,phanh,cua,xoc,speed,accuracy,hz,
-          lastGps==0?Long.MAX_VALUE:now-lastGps, lastSensor==0?Long.MAX_VALUE:now-lastSensor,
-          ratio,color("pipBgColor","#0d1a2d"),color("pipTextColor","#ffffff"),
-          speedFont,gaFont,phanhFont,cuaFont,xocFont,gpsFont,weight,statusFont,cupSize,
-          (float)smX,(float)smLon,(float)Math.max(0.05,Math.max(setting("maxGa",0.2),Math.max(setting("maxPhanh",0.224),setting("maxCua",0.2)))),status,visible());
-    }
     @Override public void onAccuracyChanged(Sensor sensor, int accuracy) {}
     @Override public void onLocationChanged(Location loc) {
         long now=SystemClock.elapsedRealtime();
@@ -448,14 +318,12 @@ public final class DriveMonitorService extends Service implements SensorEventLis
         accuracy=loc.hasAccuracy()?loc.getAccuracy():Float.NaN;
         if (loc.hasSpeed() && loc.getSpeed()>=0) speed=loc.getSpeed()*3.6f;
         else speed=Float.NaN; // Never retain stale speed or infer speed from one location.
-        publish();
     }
-    @Override public void onProviderDisabled(String provider) { speed=Float.NaN; publish(); }
+    @Override public void onProviderDisabled(String provider) { speed=Float.NaN; }
     @Override public void onTaskRemoved(Intent rootIntent) { shutdown(); super.onTaskRemoved(rootIntent); }
     private void releaseResources() {
         ready=false;
         releaseAudioWakeLock();
-        if(overlay!=null)overlay.hide();
         alarm.release();
         if(sensors!=null){ sensors.unregisterListener(this); sensors=null; }
         if(locations!=null){
@@ -463,7 +331,6 @@ public final class DriveMonitorService extends Service implements SensorEventLis
             locations=null;
         }
         instance=null;
-        lastSnapshot=new Snapshot();
         lastSample="";
         lastSampleSeq=0;
     }
