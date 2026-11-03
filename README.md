@@ -1,11 +1,26 @@
+# SmooDri v1.0.6 — TỐC ĐỘ / TRẠNG THÁI / CỐC G + âm thanh nền
+
+Phiên bản này giữ One View, OTA, Foreground Service, PiP và Overlay, bổ sung chế độ thứ ba **Chỉ âm thanh nền** (không hiện cửa sổ nổi). Bố cục PiP/Overlay mặc định chỉ có TỐC ĐỘ, TRẠNG THÁI, CỐC G-force; có thể bật riêng các chỉ số GA/PHANH/CUA/Ổ GÀ/GPS.
+
+**Đã loại bỏ hoàn toàn hệ thống điểm êm ái và cài đặt hồi phục điểm.** Nút MỨC ÊM ÁI vẫn tồn tại vì nó dùng để chỉnh độ nhạy của các ngưỡng cảnh báo, không phải điểm số.
+
+- TỐC ĐỘ: bật/tắt và chỉnh cỡ chữ riêng.
+- TRẠNG THÁI: bật/tắt, cỡ chữ, thời gian giữ cảnh báo theo `alertHoldTime`.
+- CỐC G: bật/tắt, đường kính và vị trí G-force theo dữ liệu cảm biến native.
+- PiP/Overlay: có thêm các thông số chi tiết khi cần.
+- Chỉ âm thanh nền: sau BẮT ĐẦU, nhấn nút ♪ NỀN hoặc Home để về màn hình ngoài. Foreground Service vẫn đo và phát âm báo khi vượt ngưỡng (cần bật âm báo và cấp quyền thích hợp).
+- Bản giao diện thuần web không tự tạo nền native trên trình duyệt. Các tính năng Android native yêu cầu build lại APK.
+
+**Lưu ý an toàn:** Đây là thông tin tham khảo, không phải thiết bị bảo đảm an toàn giao thông. Không nhìn hoặc điều chỉnh ứng dụng trong lúc lái xe.
+
 # SmooDri — APK native PiP / Overlay + Foreground Service + OTA web
 
-**Bản hợp nhất 1.0.5:** Phiên bản này kết hợp mã web One View, cài đặt chung/chỉnh trực tiếp, OTA qua GitHub Pages và phần Android native PiP/Foreground Service. Không thay thế folder `android` bằng một bản OTA web cũ không có PiP.
+**Bản hợp nhất 1.0.6:** Phiên bản này kết hợp mã web One View, cài đặt chung/chỉnh trực tiếp, OTA qua GitHub Pages và phần Android native PiP/Foreground Service. Không thay thế folder `android` bằng một bản OTA web cũ không có PiP.
 
-- APK `SmooDri-v1.0.5-debug.apk` được tạo khi chạy `.github/workflows/build-apk.yml` (nếu build thành công).
+- APK `SmooDri-v1.0.6-debug.apk` được tạo khi chạy `.github/workflows/build-apk.yml` (nếu build thành công).
 - Cập nhật giao diện web: `.github/workflows/deploy-web-ota.yml` → Pages.
 - PiP native và Overlay: `MainActivity.java`, `DriveMonitorService.java`, `NativePipView.java`, `NativeOverlayController.java`, `AndroidManifest.xml`.
-- **Mới 1.0.5:** Trong SETTING chọn PiP/Overlay. Overlay chỉnh kích thước dp và kéo/thu phóng trực tiếp; cần quyền SYSTEM_ALERT_WINDOW của Android. Cả hai dùng chung cỡ chữ, màu và 6 chỉ số. Mặc định PiP để giữ hành vi cũ. Xem `HUONG_DAN_PIP_OVERLAY.md`.
+- **Mới 1.0.6:** Trong SETTING chọn PiP / Overlay / Chỉ âm thanh nền. Overlay chỉnh kích thước dp và kéo/thu phóng trực tiếp; cần quyền SYSTEM_ALERT_WINDOW. PiP/Overlay mặc định hiển thị TỐC ĐỘ, TRẠNG THÁI và CỐC G. Xem `HUONG_DAN_PIP_OVERLAY.md`.
 - **Mới 1.0.4:** Bỏ giới hạn MIN/MAX ẩn trong CÀI ĐẶT NÂNG CAO (23 thông số số); Android native nhận cỡ chữ PiP lớn hơn ngưỡng cũ. Khôi phục cấu hình gốc vẫn hoạt động.
 - **Từ 1.0.3:** PiP có 6 cỡ chữ độc lập (Tốc độ, GA, Phanh, Cua, Ổ gà, GPS); bỏ Điểm chuyến đi tích lũy trên Web và PiP, giữ Điểm hiện tại ở One View.
 - Cách sử dụng và kiểm tra: `HUONG_DAN_PIP_OTA_HOP_NHAT.md`.

@@ -75,6 +75,8 @@ const NUMERIC_BASE = Object.freeze({
   speedFontSize:{label:'Cỡ chữ tốc độ',min:32,max:100,step:2,default:64},
   gpsFallbackSeconds:{label:'Thời gian ước tính mất GPS (giây)',min:0,max:3,step:0.5,default:2},
   pipSpeedFontSize:{label:'Cỡ chữ TỐC ĐỘ PiP (px)',min:24,max:70,step:1,default:44},
+  pipStatusFontSize:{label:'Cỡ chữ TRẠNG THÁI PiP (px)',min:14,max:55,step:1,default:25},
+  pipCupSize:{label:'Đường kính CỐC G PiP (px)',min:60,max:190,step:2,default:130},
   pipGaFontSize:{label:'Cỡ chữ GA PiP (px)',min:12,max:40,step:1,default:22},
   pipPhanhFontSize:{label:'Cỡ chữ PHANH PiP (px)',min:12,max:40,step:1,default:22},
   pipCuaFontSize:{label:'Cỡ chữ CUA PiP (px)',min:12,max:40,step:1,default:22},
@@ -88,10 +90,8 @@ const NUMERIC_BASE = Object.freeze({
   potholeThreshold:{label:'Ngưỡng Ổ GÀ (G)',min:0.08,max:0.65,step:0.01,default:0.24},
   maxJerk:{label:'Ngưỡng LẠNG LÁCH (G/s)',min:0.08,max:0.70,step:0.01,default:0.24},
   startDelay:{label:'Thời gian chuẩn bị (giây)',min:1,max:5,step:0.5,default:1.5},
-  scoreRecovery:{label:'Hồi phục điểm (đ/s)',min:1,max:20,step:1,default:3},
   peakHoldTime:{label:'Giữ giá trị cao nhất (giây)',min:0,max:5,step:0.5,default:1.5},
   alertHoldTime:{label:'Giữ cảnh báo (giây)',min:0.5,max:8,step:0.5,default:3},
-  scoreFontSize:{label:'Cỡ chữ điểm di chuyển (px)',min:22,max:60,step:1,default:32},
   cupSize:{label:'Đường kính cốc G (px)',min:100,max:190,step:2,default:176},
   barHeight:{label:'Chiều cao bốn thanh chỉ số (px)',min:10,max:44,step:1,default:38},
   barFontSize:{label:'Cỡ chữ tên thanh (px)',min:10,max:18,step:0.5,default:12.5}
@@ -131,11 +131,11 @@ function rangeStep(key,delta,current) { return rangeRound(key,Number(current)+de
 function rangeDefaults() {return Object.fromEntries(Object.keys(NUMERIC_RANGES).map(key=>[key,NUMERIC_RANGES[key].default]));}
 const RANGE_IDS={
   rngComfort:'comfortLevel',rngVolumeBoost:'volumePercent',rngSpeedSize:'speedFontSize',rngGpsFallback:'gpsFallbackSeconds',
-  rngPipSpeedFontSize:'pipSpeedFontSize',rngPipGaFontSize:'pipGaFontSize',rngPipPhanhFontSize:'pipPhanhFontSize',
+  rngPipSpeedFontSize:'pipSpeedFontSize',rngPipStatusFontSize:'pipStatusFontSize',rngPipCupSize:'pipCupSize',rngPipGaFontSize:'pipGaFontSize',rngPipPhanhFontSize:'pipPhanhFontSize',
   rngPipCuaFontSize:'pipCuaFontSize',rngPipXocFontSize:'pipXocFontSize',rngPipGpsFontSize:'pipGpsFontSize',
   rngOverlayWidth:'overlayWidth',rngOverlayHeight:'overlayHeight',
   rngMaxGa:'maxGa',rngMaxPhanh:'maxPhanh',rngMaxCua:'maxCua',rngPotholeThreshold:'potholeThreshold',rngMaxJerk:'maxJerk',
-  rngStartDelay:'startDelay',rngScoreRecovery:'scoreRecovery',rngPeakHoldTime:'peakHoldTime',rngAlertHoldTime:'alertHoldTime'
+  rngStartDelay:'startDelay',rngPeakHoldTime:'peakHoldTime',rngAlertHoldTime:'alertHoldTime'
 };
 
 const GRAVITY = 9.80665;
@@ -147,9 +147,9 @@ const THRESHOLD_KEYS = Object.keys(BASE_THRESHOLDS);
 const METRICS = ['xoc', 'phanh', 'cua', 'ga'];
 const WAVE_NAMES = { square: 'Bíp rõ', triangle: 'Bíp dịu', sine: 'Bíp nhẹ' };
 const POTHOLE_NAMES = { sawtooth: 'Âm trầm', square: 'Âm mạnh', sine: 'Âm nhẹ' };
-const PIP_FIELDS = ['speed','ga','phanh','cua','xoc','gps'];
-const PIP_DEFAULT_VISIBLE = ['speed','ga','phanh','cua','xoc','gps'];
-const PIP_FONT_KEYS = ['pipSpeedFontSize','pipGaFontSize','pipPhanhFontSize','pipCuaFontSize','pipXocFontSize','pipGpsFontSize'];
+const PIP_FIELDS = ['speed','status','cup','ga','phanh','cua','xoc','gps'];
+const PIP_DEFAULT_VISIBLE = ['speed','status','cup'];
+const PIP_FONT_KEYS = ['pipSpeedFontSize','pipStatusFontSize','pipCupSize','pipGaFontSize','pipPhanhFontSize','pipCuaFontSize','pipXocFontSize','pipGpsFontSize'];
 const DEFAULTS = {
   comfortLevel: 60, customThresholds: false,
   maxGa: 0.20, maxPhanh: 0.224, maxCua: 0.20,
@@ -157,14 +157,14 @@ const DEFAULTS = {
   visibleMetrics: ['xoc', 'phanh', 'cua', 'ga'],
   soundEnabled: true, volumePercent: 70,
   waveType: 'square', potholeWave: 'sawtooth',
-  startDelay: 1.5, scoreRecovery: 3,
+  startDelay: 1.5,
   peakHoldTime: 1.5, alertHoldTime: 3,
   theme: 'light', chartType: 'bar',
   speedVisible: true, speedFontSize: 64, speedColor: '#009c73', speedWeight: 700, gpsFallbackSeconds: 2,
   floatingMode:'pip', overlayWidth:320, overlayHeight:260, overlayDragRevision:0,
   pipRatio: '16:9', pipFontWeight: 700,
-  pipBgColor: '#0d1a2d', pipTextColor: '#ffffff', pipVisible: [...PIP_DEFAULT_VISIBLE],
-  scoreFontSize:32,scoreColor:'#059669',cupSize:176,cupAlign:'left',speedAlign:'left',barHeight:38,barFontSize:12.5,
+  pipBgColor: '#0d1a2d', pipTextColor: '#ffffff', pipVisible: [...PIP_DEFAULT_VISIBLE], pipLayoutVersion:2,
+  cupSize:176,cupAlign:'left',speedAlign:'left',barHeight:38,barFontSize:12.5,
   colorXoc:'#e05b37',colorPhanh:'#dc2626',colorCua:'#0284c7',colorGa:'#059669'
 };
 
@@ -215,7 +215,7 @@ function loadConfig() {
   cfg.speedWeight = [500,600,700,800].includes(Number(raw.speedWeight)) ? Number(raw.speedWeight) : 700;
   cfg.speedColor = /^#[0-9a-fA-F]{6}$/.test(raw.speedColor) ? raw.speedColor : '#009c73';
   cfg.gpsFallbackSeconds = rangeRound('gpsFallbackSeconds',finite(raw.gpsFallbackSeconds,cfg.gpsFallbackSeconds));
-  cfg.floatingMode = raw.floatingMode === 'overlay' ? 'overlay' : 'pip';
+  cfg.floatingMode = ['pip','overlay','audio'].includes(raw.floatingMode) ? raw.floatingMode : 'pip';
   cfg.overlayDragRevision=Math.max(0,finite(raw.overlayDragRevision,0));
   cfg.overlayWidth=rangeRound('overlayWidth',finite(raw.overlayWidth,cfg.overlayWidth));
   cfg.overlayHeight=rangeRound('overlayHeight',finite(raw.overlayHeight,cfg.overlayHeight));
@@ -231,14 +231,19 @@ function loadConfig() {
     }catch(_){}
   }
   cfg.pipRatio = ['16:9','4:3','1:1'].includes(raw.pipRatio) ? raw.pipRatio : DEFAULTS.pipRatio;
-  // Chuyển cài đặt cũ sang cỡ chữ tốc độ mới (đồng thời bỏ điểm chuyến đi PiP).
+  // Giữ tương thích với cỡ chữ tốc độ PiP từ các bản trước.
   // Giá trị cũ 23 px đã bị thu nhỏ đáng kể trong Canvas, do đó không dùng thẳng cho mục mới.
   for(const key of PIP_FONT_KEYS) cfg[key]=rangeRound(key,finite(raw[key],cfg[key]));
   cfg.pipFontWeight = [500,600,700,800].includes(Number(raw.pipFontWeight)) ? Number(raw.pipFontWeight) : DEFAULTS.pipFontWeight;
   cfg.pipBgColor = /^#[0-9a-fA-F]{6}$/.test(raw.pipBgColor) ? raw.pipBgColor : DEFAULTS.pipBgColor;
   cfg.pipTextColor = /^#[0-9a-fA-F]{6}$/.test(raw.pipTextColor) ? raw.pipTextColor : DEFAULTS.pipTextColor;
-  const pipVisible = Array.isArray(raw.pipVisible) ? raw.pipVisible.filter(k=>PIP_FIELDS.includes(k)) : PIP_DEFAULT_VISIBLE;
-  cfg.pipVisible = pipVisible.length ? [...new Set(pipVisible)] : [...PIP_DEFAULT_VISIBLE];
+  // Lần đầu lên 1.0.6: cấu hình 6 chỉ số cũ chuyển sang 3 mục tối giản.
+  // Đánh dấu phiên bản bố cục để kể cả khi tắt mọi mục, lần mở sau vẫn được giữ nguyên.
+  const savedVisible=Array.isArray(raw.pipVisible)?raw.pipVisible:null;
+  const pipVisible=raw.pipLayoutVersion===2 && savedVisible
+    ? savedVisible.filter(k=>PIP_FIELDS.includes(k)) : PIP_DEFAULT_VISIBLE;
+  cfg.pipVisible=[...new Set(pipVisible)];
+  cfg.pipLayoutVersion=2;
   cfg.theme = raw.theme === 'dark' ? 'dark' : 'light';
   cfg.chartType = raw.chartType === 'donut' ? 'donut' : 'bar';
   cfg.waveType = WAVE_NAMES[raw.waveType] ? raw.waveType : 'square';
@@ -246,13 +251,12 @@ function loadConfig() {
   cfg.soundEnabled = raw.soundEnabled !== false;
   cfg.volumePercent = rangeRound('volumePercent',migrated ? finite(raw.volumeBoost,2.8)*25 : finite(raw.volumePercent,cfg.volumePercent));
   cfg.startDelay = rangeRound('startDelay',finite(raw.startDelay,cfg.startDelay));
-  cfg.scoreRecovery = rangeRound('scoreRecovery',finite(raw.scoreRecovery,cfg.scoreRecovery));
   cfg.peakHoldTime = rangeRound('peakHoldTime',finite(raw.peakHoldTime,cfg.peakHoldTime));
   cfg.alertHoldTime = rangeRound('alertHoldTime',finite(raw.alertHoldTime,cfg.alertHoldTime));
-  for(const key of ['scoreFontSize','cupSize','barHeight','barFontSize']) {
+  for(const key of ['cupSize','barHeight','barFontSize']) {
     cfg[key]=rangeRound(key,finite(raw[key],cfg[key]));
   }
-  for(const key of ['scoreColor','colorXoc','colorPhanh','colorCua','colorGa']) {
+  for(const key of ['colorXoc','colorPhanh','colorCua','colorGa']) {
     if(/^#[0-9a-fA-F]{6}$/.test(raw[key])) cfg[key]=raw[key];
   }
   if(['left','center','right'].includes(raw.cupAlign)) cfg.cupAlign=raw.cupAlign;
@@ -272,8 +276,6 @@ function saveConfig() {
 /* Chỉ thay đổi phần hiển thị, không thay đổi mẫu cảm biến hoặc mức cảnh báo. */
 function applyUiAppearance() {
   const root=document.documentElement;
-  root.style.setProperty('--score-font-size',config.scoreFontSize+'px');
-  root.style.setProperty('--score-font-color',config.scoreColor);
   root.style.setProperty('--cup-size',config.cupSize+'px');
   root.style.setProperty('--cup-align',({left:'flex-start',center:'center',right:'flex-end'})[config.cupAlign]||'flex-start');
   root.style.setProperty('--speed-align',({left:'flex-start',center:'center',right:'flex-end'})[config.speedAlign]||'flex-start');
@@ -484,7 +486,12 @@ function updateOverlayPermissionStatus(known) {
 function syncFloatingSettings() {
   $('selFloatingMode').value=config.floatingMode;
   const isOverlay=config.floatingMode==='overlay';
+  const isAudio=config.floatingMode==='audio';
   $('overlaySizeOptions').hidden=!isOverlay;
+  $('audioModeHint').hidden=!isAudio;
+  if(isAudio){$('audioModeHint').textContent=config.soundEnabled?
+    'Chỉ âm thanh nền: nhấn BẮT ĐẦU rồi Home hoặc ♪ NỀN. Không mở PiP/Overlay; cảnh báo sẽ phát bằng Foreground Service Android.':
+    'Bạn đang TẮT âm thanh cảnh báo. Hãy bật Âm thanh cảnh báo trước khi chọn chế độ chỉ âm thanh nền.';}
   $('overlayPermissionBox').hidden=!isOverlay;
   $('rngOverlayWidth').value=String(config.overlayWidth);
   $('rngOverlayHeight').value=String(config.overlayHeight);
@@ -492,14 +499,14 @@ function syncFloatingSettings() {
   $('lblOverlayHeight').textContent=config.overlayHeight+'dp';
   const button=$('btnNativePip');
   if(button) {
-    button.textContent=isOverlay?'▣ Overlay':'▣ PiP';
-    button.title=isOverlay?'Mở cửa sổ nổi Overlay trên Android':'Mở cửa sổ PiP trên Android';
+    button.textContent=isAudio?'♪ NỀN':(isOverlay?'▣ Overlay':'▣ PiP');
+    button.title=isAudio?'Chạy nền, chỉ âm thanh cảnh báo':(isOverlay?'Mở cửa sổ nổi Overlay trên Android':'Mở cửa sổ PiP trên Android');
   }
   updateOverlayPermissionStatus();
 }
 function bindFloatingSettings() {
   $('selFloatingMode').addEventListener('change',event=>{
-    config.floatingMode=event.target.value==='overlay'?'overlay':'pip';
+    config.floatingMode=['pip','overlay','audio'].includes(event.target.value)?event.target.value:'pip';
     syncFloatingSettings();saveConfig();
   });
   for(const [key,id,label] of [['overlayWidth','rngOverlayWidth','lblOverlayWidth'],['overlayHeight','rngOverlayHeight','lblOverlayHeight']]){
@@ -533,6 +540,8 @@ function syncPipSettings() {
   preview.style.setProperty('--pip-bg',config.pipBgColor);
   preview.style.setProperty('--pip-text',config.pipTextColor);
   preview.style.setProperty('--pip-speed',`${config.pipSpeedFontSize}px`);
+  preview.style.setProperty('--pip-status',`${config.pipStatusFontSize}px`);
+  preview.style.setProperty('--pip-cup',`${config.pipCupSize}px`);
   preview.style.setProperty('--pip-ga',`${config.pipGaFontSize}px`);
   preview.style.setProperty('--pip-phanh',`${config.pipPhanhFontSize}px`);
   preview.style.setProperty('--pip-cua',`${config.pipCuaFontSize}px`);
@@ -558,7 +567,6 @@ function bindPipSettings() {
   $('inpPipText').addEventListener('input',e=>{config.pipTextColor=e.target.value;syncPipSettings();saveConfig();});
   document.querySelectorAll('[data-pip-visible]').forEach(input=>input.addEventListener('change',()=>{
     const chosen=PIP_FIELDS.filter(k=>document.querySelector(`[data-pip-visible="${k}"]`).checked);
-    if(chosen.length===0){ input.checked=true; return; }
     config.pipVisible=chosen;syncPipSettings();saveConfig();
   }));
 }
@@ -636,10 +644,6 @@ let prevLateralG = 0;
 let lastSignX = 0;
 let lastReversalAt = 0;
 let reversalTimestamps = [];
-let instantScore = 100;
-let violationCount = 0;
-let isCurrentlyViolating = false;
-let lastViolationAt = -Infinity;
 let lastPotholePct = 0;
 let lastSlopeUpdate = 0;
 const peaks = { Ga: { val: 0, time: 0 }, Phanh: { val: 0, time: 0 }, Cua: { val: 0, time: 0 }, Xoc: { val: 0, time: 0 } };
@@ -660,7 +664,7 @@ function averageOffsets(samples) {
   // Sai lệch lớn cho thấy máy đang rung/chuyển động, cần đứng yên để lấy gốc 0G.
   return variation <= 0.07 && Math.hypot(av.x, av.y, av.z) >= 0.55 ? av : null;
 }
-function resetSamplesAndScores(resetTrip) {
+function resetMotionSamples() {
   slopeBaselineLon = 0; slopeHasEstimate = false; vertBaseline = 0;
   smoothG = { x: 0, lon: 0, vert: 0 };
   prevLateralG = 0; lastSignX = 0; lastReversalAt = 0; reversalTimestamps = [];
@@ -668,14 +672,7 @@ function resetSamplesAndScores(resetTrip) {
   Object.values(peaks).forEach((pk) => { pk.val = 0; pk.time = 0; });
   alertHold.lastAt = -Infinity; alertHold.weaving = false;
   Object.keys(alertHold.peaks).forEach((k) => { alertHold.peaks[k] = 0; });
-  isCurrentlyViolating = false;
-  if (resetTrip) {
-    instantScore = 100; violationCount = 0;
-    lastViolationAt = -Infinity;
-    $('scoreValue').textContent = '100';
-    $('scoreValue').style.color = 'var(--green)';
-    $('violationCount').textContent = '0';
-  }
+
 }
 async function requestWakeLock() {
   if (!navigator.wakeLock || !isRunning) return;
@@ -731,7 +728,7 @@ async function startApp() {
     }
     manualOffset = offsets; isCountingDown = false; isCalibrated = true;
     lastSampleTime = performance.now();
-    resetSamplesAndScores(true);
+    resetMotionSamples();
     setBanner('ĐANG THEO DÕI', 'Đã cân chỉnh • Lái xe nhẹ nhàng');
   }, config.startDelay * 1000);
   watchdogTimer = setInterval(() => {
@@ -751,7 +748,7 @@ function quickCalibrate() {
     return;
   }
   manualOffset = offsets;
-  resetSamplesAndScores(false); lastSampleTime = performance.now();
+  resetMotionSamples(); lastSampleTime = performance.now();
   setBanner('ĐÃ ĐẶT LẠI 0G', 'Giữ nguyên vị trí lắp điện thoại');
 }
 function updateSlopeBadge(degrees, valid, now) {
@@ -827,7 +824,7 @@ function handleMotion(event) {
   if (currentSign) lastSignX = currentSign;
   reversalTimestamps = reversalTimestamps.filter((t) => now - t <= 3200);
   const weaving = reversalTimestamps.length >= 2; // Không kết luận chỉ từ 1 cú cua hoặc 1 đỉnh jerk.
-  evaluateAndRender(smoothG.x, smoothG.lon, smoothG.vert, weaving, dt, now);
+  evaluateAndRender(smoothG.x, smoothG.lon, smoothG.vert, weaving, now);
 }
 function levelColor(pct) {
   if (pct >= 100) return 'var(--red)';
@@ -858,7 +855,7 @@ function updateMetric(key, percentage, now) {
   $(`donutVal${key}`).textContent = `${peakPct}%`;
   $(`donutVal${key}`).style.color = peakPct >= 65 ? levelColor(peakPct) : 'var(--text)';
 }
-function evaluateAndRender(gx, glon, gvert, weaving, dt, now) {
+function evaluateAndRender(gx, glon, gvert, weaving, now) {
   const ga = Math.max(0, glon);
   const phanh = Math.max(0, -glon);
   const cua = Math.abs(gx);
@@ -886,24 +883,6 @@ function evaluateAndRender(gx, glon, gvert, weaving, dt, now) {
   $('gBall').style.boxShadow = `0 0 12px ${color}`;
   $('cupReadout').textContent = `${Math.hypot(gx, glon).toFixed(2)} G`;
 
-  if (weaving || maxAll >= 100) {
-    if (!isCurrentlyViolating && now - lastViolationAt >= 1000) {
-      violationCount++; $('violationCount').textContent = String(violationCount);
-      lastViolationAt = now;
-    }
-    isCurrentlyViolating = true;
-  } else if (maxAll < 85 && !weaving) isCurrentlyViolating = false;
-
-  // Chỉ giữ điểm hiện tại, hồi phục khi lái êm; không tích lũy điểm chuyến đi.
-  const excess = (pct) => Math.max(0, (pct - 95) / 35);
-  const discomfort = excess(values.Ga) * 0.8 + excess(values.Phanh) * 1.15 +
-    excess(values.Cua) * 0.95 + excess(values.Xoc) * 1.40 + (weaving ? 1.8 : 0);
-  instantScore = discomfort > 0
-    ? Math.max(0, instantScore - dt * discomfort * 6)
-    : Math.min(100, instantScore + dt * config.scoreRecovery);
-  const currentScore = Math.round(instantScore);
-  $('scoreValue').textContent = String(currentScore);
-  $('scoreValue').style.color = currentScore >= 85 ? 'var(--green)' : currentScore >= 65 ? 'var(--yellow)' : 'var(--red)';
 
   const alertHoldMs = config.alertHoldTime * 1000;
   const triggered = weaving || maxAll >= 100;
@@ -945,7 +924,7 @@ if (IS_NATIVE_ANDROID) {
     nativePipButton.classList.remove('hidden');
     nativePipButton.addEventListener('click', () => {
       if (!isRunning) {
-        setBanner('CHƯA THEO DÕI', 'Hãy nhấn BẮT ĐẦU trước khi mở PiP.');
+        setBanner('CHƯA THEO DÕI', 'Hãy nhấn BẮT ĐẦU trước khi chuyển chế độ chạy nền.');
         return;
       }
       try { window.SmooDriAndroid.openFloating(); }
@@ -977,7 +956,7 @@ document.querySelectorAll('[data-visible-metric]').forEach((input) => input.addE
   applyMetricVisibility();
 }));
 $('btnShowAll').addEventListener('click', () => { config.visibleMetrics = [...METRICS]; applyMetricVisibility(); });
-$('chkSoundEnabled').addEventListener('change', (e) => { config.soundEnabled = e.target.checked; saveConfig(); });
+$('chkSoundEnabled').addEventListener('change', (e) => { config.soundEnabled = e.target.checked; syncFloatingSettings(); saveConfig(); });
 for (const wave of ['square', 'triangle', 'sine']) {
   $({square:'btnWaveSquare',triangle:'btnWaveTriangle',sine:'btnWaveSine'}[wave]).addEventListener('click', () => {
     applyWave(wave); if (config.soundEnabled) burst(wave, 1200);
@@ -993,7 +972,6 @@ $('btnTestPothole').addEventListener('click', potholeBurst);
 function bindSliders() {
   bindNumericSlider('rngVolumeBoost', 'lblVolumeBoost', 'volumePercent', '%', 0);
   bindNumericSlider('rngStartDelay', 'lblStartDelay', 'startDelay', ' giây', 1);
-  bindNumericSlider('rngScoreRecovery', 'lblScoreRecovery', 'scoreRecovery', ' đ/s', 0);
   bindNumericSlider('rngPeakHoldTime', 'lblPeakHoldTime', 'peakHoldTime', ' giây', 1);
   bindNumericSlider('rngAlertHoldTime', 'lblAlertHoldTime', 'alertHoldTime', ' giây', 1);
   for (const [id, label, key, unit] of [
@@ -1014,7 +992,6 @@ function syncAllSettings() {
   for (const [id, label, key, suffix, decimals] of [
     ['rngVolumeBoost','lblVolumeBoost','volumePercent','%',0],
     ['rngStartDelay','lblStartDelay','startDelay',' giây',1],
-    ['rngScoreRecovery','lblScoreRecovery','scoreRecovery',' đ/s',0],
     ['rngPeakHoldTime','lblPeakHoldTime','peakHoldTime',' giây',1],
     ['rngAlertHoldTime','lblAlertHoldTime','alertHoldTime',' giây',1]
   ]) {
@@ -1168,7 +1145,6 @@ function initRangeEditor(){
 }
 /* ===== Chế độ chỉnh trực tiếp trên One View ===== */
 const UI_EDIT_TARGETS={
-  score:{title:'ĐIỂM HIỆN TẠI',options:[['scoreFontSize','Cỡ chữ điểm'],['scoreColor','Màu chữ điểm']]},
   speed:{title:'TỐC ĐỘ GPS',options:[['speedFontSize','Cỡ chữ tốc độ'],['speedColor','Màu chữ tốc độ'],['speedAlign','Vị trí tốc độ']]},
   cup:{title:'CỐC G',options:[['cupSize','Đường kính cốc'],['cupAlign','Vị trí cốc G']]},
   xoc:{title:'Ổ GÀ & ĐƯỜNG XÓC',options:[['barHeight','Chiều cao 4 thanh'],['barFontSize','Cỡ chữ tên thanh'],['colorXoc','Màu thanh ổ gà']]},
@@ -1178,7 +1154,7 @@ const UI_EDIT_TARGETS={
 };
 let uiEditMode=false,uiTarget=null;
 function directUiElements(target){
-  return target==='score'?[document.querySelector('.score-card')]:target==='speed'?[$('speedPanel')]:target==='cup'?[$('cupCircle')]:[...document.querySelectorAll(`[data-metric="${target}"]`)];
+  return target==='speed'?[$('speedPanel')]:target==='cup'?[$('cupCircle')]:[...document.querySelectorAll(`[data-metric="${target}"]`)];
 }
 function enterDirectEdit(){
   if(isRunning||isCountingDown){alert('Hãy DỪNG theo dõi và đỗ xe an toàn trước khi chỉnh giao diện.');return;}
@@ -1229,7 +1205,7 @@ function initDirectUiEditor(){
   $('btnFinishUiEdit').addEventListener('click',leaveDirectEdit);
   $('btnCloseUiPanel').addEventListener('click',()=>{uiTarget=null;$('uiEditPanel').hidden=true;document.querySelectorAll('.ui-target-active').forEach(el=>el.classList.remove('ui-target-active'));});
   $('uiEditSetting').addEventListener('change',renderUiEditControls);
-  for(const key of ['score','speed','cup','xoc','phanh','cua','ga']){
+  for(const key of ['speed','cup','xoc','phanh','cua','ga']){
     for(const el of directUiElements(key)){
       if(!el)continue;
       el.addEventListener('click',event=>{if(!uiEditMode)return;event.preventDefault();event.stopPropagation();chooseUiTarget(key);},true);

@@ -32,16 +32,8 @@
       </div>
     </div>
 
-    <!-- HÀNG 2: ĐIỂM HIỆN TẠI (KHÔNG CÓ ĐIỂM CHUYẾN ĐI TÍCH LŨY) VÀ CẢNH BÁO -->
+    <!-- Trạng thái cảnh báo chiếm toàn bộ chiều rộng; không còn hệ thống điểm số. -->
     <div class="status-row">
-      <div class="score-card">
-        <span class="score-label">ĐIỂM HIỆN TẠI</span>
-        <div class="score-main-wrap">
-          <span id="scoreValue" class="score-value">100</span>
-          <span id="violationCount" class="violation-badge" title="Số lần vượt ngưỡng 100% hoặc lạng lách">0</span>
-        </div>
-        <span class="instant-score">Có thể hồi phục khi lái êm</span>
-      </div>
       <div id="alertBanner" class="alert-banner">
         <div id="alertTitle" class="alert-title">SẴN SÀNG</div>
         <div id="alertSub" class="alert-sub">Gắn cố định máy & bấm Bắt đầu</div>
@@ -194,7 +186,7 @@
 
       <div class="setting-group ui-mode-entry">
         <button id="btnDirectEdit" type="button" class="btn-option ui-mode-launch">✏️ CHỈNH GIAO DIỆN TRỰC TIẾP</button>
-        <p class="setting-hint">Đóng cửa sổ này, chạm vào điểm hiện tại, tốc độ, cốc G hoặc thanh chỉ số để xem thay đổi ngay trên One View. Chỉ chỉnh khi đã dừng theo dõi.</p>
+        <p class="setting-hint">Đóng cửa sổ này, chạm vào tốc độ, cốc G hoặc thanh chỉ số để xem thay đổi ngay trên One View. Chỉ chỉnh khi đã dừng theo dõi.</p>
       </div>
       <div class="section-divider">1. Mức độ êm ái</div>
       <div class="setting-group">
@@ -277,10 +269,11 @@
 
       <div class="section-divider">6. Cửa sổ nổi PiP / Overlay trên Android</div>
       <div class="setting-group">
-        <div class="setting-hint">Chọn <strong>PiP chuẩn Android</strong> hoặc <strong>Overlay tự chỉnh kích thước</strong>. Cả hai dùng chung cỡ chữ, màu và 6 thông số đang hiển thị. Chỉ một chế độ hoạt động mỗi lần; cả hai chỉ có trong APK Android.</div>
+        <div class="setting-hint">Chọn <strong>PiP</strong>, <strong>Overlay</strong> hoặc <strong>Chỉ âm thanh nền</strong>. PiP/Overlay dùng chung cài đặt hiển thị; chế độ âm thanh nền không tạo cửa sổ nhưng vẫn cảnh báo bằng Foreground Service trong APK. Chỉ một chế độ hoạt động mỗi lần.</div>
         <div class="setting-label"><label for="selFloatingMode">Kiểu cửa sổ khi ra màn hình ngoài</label>
-          <select id="selFloatingMode"><option value="pip">PiP — Android quản lý kích thước</option><option value="overlay">Overlay — tự kéo và thay đổi kích thước</option></select>
+          <select id="selFloatingMode"><option value="pip">PiP — Android quản lý kích thước</option><option value="overlay">Overlay — tự kéo và thay đổi kích thước</option><option value="audio">Chỉ âm thanh nền — không hiện cửa sổ</option></select>
         </div>
+        <div id="audioModeHint" class="setting-hint" hidden>Chỉ âm thanh nền: sau BẮT ĐẦU, nhấn Home hoặc ♪ NỀN. SmooDri vẫn đo bằng Foreground Service nhưng không mở PiP/Overlay. Cần bật âm thanh cảnh báo và cho phép chạy nền trên thiết bị.</div>
         <div id="overlaySizeOptions" class="overlay-size-options" hidden>
           <div class="setting-label"><label for="rngOverlayWidth">Chiều rộng Overlay</label><strong id="lblOverlayWidth">320dp</strong></div>
           <input id="rngOverlayWidth" type="range" />
@@ -297,7 +290,12 @@
         <div class="setting-label"><label for="selPipRatio">Tỷ lệ cửa sổ PiP chuẩn</label>
           <select id="selPipRatio"><option value="16:9">16:9 — Ngang</option><option value="4:3">4:3 — Cân đối</option><option value="1:1">1:1 — Vuông</option></select>
         </div>
-        <div class="setting-hint">Cỡ chữ của <strong>PiP và Overlay dùng chung 6 thông số độc lập</strong>. Kéo thanh hoặc nhấn +/− để thay đổi; kích thước chữ thực tế còn phụ thuộc độ thu nhỏ của cửa sổ.</div>
+        <div class="setting-hint">PiP và Overlay dùng chung <strong>cỡ chữ TỐC ĐỘ, TRẠNG THÁI, kích thước CỐC G và các cỡ chữ GA / PHANH / CUA / Ổ GÀ / GPS</strong>. Kéo thanh hoặc nhấn +/− để thay đổi; kích thước chữ thực tế còn phụ thuộc độ thu nhỏ của cửa sổ.</div>
+        <div class="setting-hint"><strong>Bố cục tối giản mặc định:</strong> TỐC ĐỘ, TRẠNG THÁI và CỐC G. Bạn có thể bật thêm các chỉ số kỹ thuật tùy ý ở phía dưới.</div>
+        <div class="setting-label"><label for="rngPipStatusFontSize">Cỡ chữ TRẠNG THÁI (PiP / Overlay)</label><strong id="lblPipStatusFontSize">25px</strong></div>
+        <input id="rngPipStatusFontSize" type="range" />
+        <div class="setting-label"><label for="rngPipCupSize">Đường kính CỐC G (PiP / Overlay)</label><strong id="lblPipCupSize">130px</strong></div>
+        <input id="rngPipCupSize" type="range" />
         <div class="setting-label"><label for="rngPipSpeedFontSize">Cỡ chữ TỐC ĐỘ trong PiP</label><strong id="lblPipSpeedFontSize">44px</strong></div>
         <input id="rngPipSpeedFontSize" type="range" />
         <div class="setting-label"><label for="rngPipGaFontSize">Cỡ chữ GA trong PiP</label><strong id="lblPipGaFontSize">22px</strong></div>
@@ -317,7 +315,9 @@
         <div class="setting-label"><label for="inpPipText">Màu chữ PiP</label><input id="inpPipText" type="color" value="#ffffff" /></div>
         <div class="setting-label"><span>Thông tin xuất hiện trong PiP / Overlay</span></div>
         <div class="metric-choices" id="pipMetricChoices">
-          <label><input type="checkbox" data-pip-visible="speed" checked /> Tốc độ GPS (native)</label>
+          <label><input type="checkbox" data-pip-visible="speed" checked /> TỐC ĐỘ</label>
+          <label><input type="checkbox" data-pip-visible="status" checked /> TRẠNG THÁI CẢNH BÁO</label>
+          <label><input type="checkbox" data-pip-visible="cup" checked /> CỐC G-force</label>
           <label><input type="checkbox" data-pip-visible="ga" checked /> GA</label>
           <label><input type="checkbox" data-pip-visible="phanh" checked /> PHANH</label>
           <label><input type="checkbox" data-pip-visible="cua" checked /> VÀO CUA</label>
@@ -326,13 +326,19 @@
         </div>
         <div id="pipSettingsPreview" class="pip-settings-preview" aria-label="Xem trước bố cục PiP">
           <div class="pip-preview-head"><strong>🚘 SMOODRI</strong><span>ĐANG ĐO</span></div>
-          <div class="pip-preview-main"><span data-preview="speed">Tốc độ <b>65 km/h</b></span></div>
+          <div class="pip-preview-status" data-preview="status">ÊM ÁI</div>
+          <div class="pip-preview-main">
+            <span data-preview="speed">TỐC ĐỘ <b>65 km/h</b></span>
+            <div class="pip-preview-cup" data-preview="cup" aria-label="Mô phỏng cốc G-force">
+              <div class="pip-preview-cross"></div><div class="pip-preview-ball"></div><small>0.12 G</small>
+            </div>
+          </div>
           <div class="pip-preview-metrics">
             <span data-preview="ga">GA 18%</span><span data-preview="phanh">PHANH 25%</span><span data-preview="cua">CUA 42%</span><span data-preview="xoc">Ổ GÀ 12%</span>
           </div>
           <div class="pip-preview-gps" data-preview="gps">GPS ±5m · 1.0Hz</div>
         </div>
-        <div class="setting-hint">Tốc độ và GPS trong PiP/Overlay được lấy từ Foreground Service native. Nếu GPS quá cũ, tốc độ sẽ hiện “--” thay vì giữ tốc độ cũ.</div>
+        <div class="setting-hint">Tốc độ, trạng thái cảnh báo và Cốc G trong PiP/Overlay được lấy từ Foreground Service native. Nếu GPS quá cũ, tốc độ sẽ hiện “--” thay vì giữ tốc độ cũ.</div>
       </div>
 
       <details id="advancedSettings" class="advanced-settings">
@@ -362,10 +368,6 @@
           <div class="setting-group">
             <div class="setting-label"><label for="rngStartDelay">Thời gian chuẩn bị và cân chỉnh</label><span id="lblStartDelay">1.0 giây</span></div>
             <input id="rngStartDelay" type="range" min="1" max="5" step="0.5" />
-          </div>
-          <div class="setting-group">
-            <div class="setting-label"><label for="rngScoreRecovery">Hồi phục điểm tức thời</label><span id="lblScoreRecovery">3 đ/s</span></div>
-            <input id="rngScoreRecovery" type="range" min="1" max="20" step="1" />
           </div>
           <div class="setting-group">
             <div class="setting-label"><label for="rngPeakHoldTime">Giữ giá trị cao nhất</label><span id="lblPeakHoldTime">1.5 giây</span></div>
@@ -436,11 +438,11 @@
       <div class="help-content">
         <h4>1. Theo dõi chuyến đi</h4><p>Gắn cố định điện thoại, bật quyền cảm biến/GPS cần thiết, nhấn BẮT ĐẦU và đợi cân chỉnh. Các chỉ số chỉ mang tính tham khảo; không sử dụng để quyết định thao tác lái xe.</p>
         <h4>2. Cài đặt chung</h4><p>Nhấn ⚙️ để mở popup CÀI ĐẶT CHUNG. Mỗi thông số số có nút −, thanh trượt ngắn và nút +. Chạm nhẹ hoặc vuốt dọc trên thanh sẽ không làm nhảy giá trị; kéo ngang có chủ ý để chỉnh. Thay đổi được lưu tự động. Nhấn ĐÓNG hoặc chạm ngoài popup để thoát.</p>
-        <h4>3. Chỉnh giao diện trực tiếp</h4><p>Khi đã DỪNG theo dõi, mở CÀI ĐẶT CHUNG và nhấn CHỈNH GIAO DIỆN TRỰC TIẾP. Chạm vào điểm, tốc độ, cốc G hoặc thanh chỉ số. Thanh điều khiển nhỏ xuất hiện ở phía đối diện, để bạn nhìn rõ phần đang chỉnh. Chạm XONG để trở lại giao diện bình thường.</p>
+        <h4>3. Chỉnh giao diện trực tiếp</h4><p>Khi đã DỪNG theo dõi, mở CÀI ĐẶT CHUNG và nhấn CHỈNH GIAO DIỆN TRỰC TIẾP. Chạm vào tốc độ, cốc G hoặc thanh chỉ số. Thanh điều khiển nhỏ xuất hiện ở phía đối diện, để bạn nhìn rõ phần đang chỉnh. Chạm XONG để trở lại giao diện bình thường.</p>
         <h4>4. Giới hạn MIN/MAX/STEP/DEFAULT</h4><p>Trong CÀI ĐẶT CHUNG, mở mục GIỚI HẠN THÔNG SỐ. Chọn một thông số và nhập các giá trị mới. Không có giới hạn MIN/MAX ẩn, nhưng MIN phải nhỏ hơn MAX, STEP phải dương và DEFAULT nằm trong khoảng MIN–MAX. Giá trị bất hợp lý có thể làm méo bố cục hoặc giảm độ tin cậy của chỉ số. Nút Mặc định khôi phục cấu hình gốc mà không xóa dữ liệu.</p>
-        <h4>5. PiP hoặc Overlay</h4><p>Vào CÀI ĐẶT CHUNG → Cửa sổ nổi và chọn PiP hoặc Overlay. PiP chuẩn do Android quản lý kích thước. Overlay có thể tự chỉnh chiều rộng/cao bằng dp, kéo cửa sổ bằng ≡ hoặc kéo góc ◢ để phóng to thu nhỏ. Overlay cần cấp quyền Hiển thị trên ứng dụng khác; nếu thiết bị quản lý không cho cấp quyền, hãy dùng PiP. Cả hai có cỡ chữ riêng cho TỐC ĐỘ, GA, PHANH, CUA, Ổ GÀ và GPS, cùng màu sắc và mục hiển thị. Nhấn MỞ trong Overlay để về ứng dụng, nhấn × để dừng theo dõi và đóng Overlay. Chỉ thay một chế độ mỗi lần. Nếu chữ quá dài có thể tự co để vừa cửa sổ. Không thao tác khi đang lái.</p>
+        <h4>5. PiP hoặc Overlay</h4><p>Vào CÀI ĐẶT CHUNG → Cửa sổ nổi và chọn PiP, Overlay hoặc Chỉ âm thanh nền. PiP chuẩn do Android quản lý kích thước. Overlay có thể tự chỉnh chiều rộng/cao bằng dp, kéo cửa sổ bằng ≡ hoặc kéo góc ◢ để phóng to thu nhỏ. Overlay cần cấp quyền Hiển thị trên ứng dụng khác; nếu thiết bị quản lý không cho cấp quyền, hãy dùng PiP. PiP và Overlay mặc định chỉ hiện TỐC ĐỘ, TRẠNG THÁI và CỐC G; có thể bật thêm GA, PHANH, CUA, Ổ GÀ và GPS. Mỗi thành phần có bật/tắt và cỡ chữ hoặc kích thước riêng. Nhấn MỞ trong Overlay để về ứng dụng, nhấn × để dừng theo dõi và đóng Overlay. Chế độ Chỉ âm thanh nền không hiện cửa sổ nổi nhưng tiếp tục cảnh báo qua Foreground Service khi rời ứng dụng. Nếu chữ quá dài có thể tự co để vừa cửa sổ. Không thao tác khi đang lái.</p>
         <h4>6. Cập nhật OTA</h4><p>Ứng dụng tự kiểm tra khi mở có Internet. Khi có phiên bản web mới, chương trình tải vào bộ nhớ đệm và tự kích hoạt khi chưa theo dõi chuyến đi. Nếu đang đo, bản mới sẽ được áp dụng khi dừng hoặc mở ứng dụng lần sau. Các chức năng Android gốc như quyền, Foreground Service, PiP native, icon APK vẫn cần APK mới. Có thể nhấn KIỂM TRA CẬP NHẬT trong CÀI ĐẶT CHUNG để kiểm tra thủ công.</p>
-        <h4>6. Lưu ý an toàn</h4><p>Chỉ thao tác cài đặt khi xe đã đỗ ở nơi an toàn. Nếu giao diện quá chật, giảm cỡ chữ hoặc chiều cao thanh để bảo đảm One View.</p>
+        <h4>7. Lưu ý an toàn</h4><p>Chỉ thao tác cài đặt khi xe đã đỗ ở nơi an toàn. Nếu giao diện quá chật, giảm cỡ chữ hoặc chiều cao thanh để bảo đảm One View.</p>
       </div>
     </div>
   </div>

@@ -4,7 +4,7 @@ Repo hiện bao gồm Android native **Foreground Service + PiP**, giao diện O
 
 1. Chép toàn bộ nội dung ZIP vào gốc repo GitHub `smoodri` (kể cả `.github/`), Commit.
 2. Trong GitHub Actions, chạy **Build SmooDri APK**.
-3. Artifact dự kiến: `SmooDri-v1.0.5-debug.apk`, theo `versionName` tại `android/app/build.gradle`.
+3. Artifact dự kiến: `SmooDri-v1.0.6-debug.apk`, theo `versionName` tại `android/app/build.gradle`.
 4. Cài APK, bật quyền Vị trí, GPS, Thông báo nếu cần và PiP.
 5. Nhấn BẮT ĐẦU rồi nhấn nút **▣ PiP** hoặc Home để vào PiP.
 6. Để phát hành cập nhật web, bật GitHub Pages → Source: GitHub Actions và chạy **Publish SmooDri Web OTA (Pages)**.

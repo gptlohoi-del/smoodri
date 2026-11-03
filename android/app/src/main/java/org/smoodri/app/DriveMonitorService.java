@@ -20,6 +20,7 @@ import android.location.LocationManager;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.PowerManager;
 import android.os.SystemClock;
 import android.media.AudioManager;
 import android.media.ToneGenerator;
@@ -29,7 +30,7 @@ import org.json.JSONObject;
 import java.util.ArrayDeque;
 import java.util.Locale;
 
-/** Android-owned sampling independent of WebView visibility; no wake lock and no automatic restart. */
+/** Android-owned sampling independent of WebView visibility; limited wake lock for audio-only mode. */
 public final class DriveMonitorService extends Service implements SensorEventListener, LocationListener {
     public static final String ACTION_START = "org.smoodri.app.START";
     public static final String ACTION_STOP = "org.smoodri.app.STOP";
@@ -53,23 +54,25 @@ public final class DriveMonitorService extends Service implements SensorEventLis
     public static final class Snapshot {
         public final boolean active, calibrated;
         public final int ga, phanh, cua, xoc;
-        public final float speed, accuracy, hz;
+        public final float speed, accuracy, hz, lateralG, longitudinalG, cupLimit;
+        public final String drivingStatus;
         public final long gpsAgeMs, sensorAgeMs;
         public final String pipRatio, bg, fg;
         public final int speedFontSize, gaFontSize, phanhFontSize, cuaFontSize, xocFontSize, gpsFontSize;
-        public final int fontWeight;
+        public final int fontWeight, statusFontSize, cupSize;
         public final String[] visible;
         Snapshot() {
             this(false, false, 0, 0, 0, 0, Float.NaN, Float.NaN, Float.NaN,
                  Long.MAX_VALUE, Long.MAX_VALUE, "16:9", "#0d1a2d", "#ffffff",
-                 44, 22, 22, 22, 22, 19, 700,
-                 new String[] {"speed", "ga", "phanh", "cua", "xoc", "gps"});
+                 44, 22, 22, 22, 22, 19, 700, 25, 130,
+                 0f, 0f, .20f, "SẴN SÀNG", new String[] {"speed", "status", "cup"});
         }
         Snapshot(boolean active, boolean calibrated, int ga, int phanh, int cua, int xoc,
                  float speed, float accuracy, float hz, long gpsAgeMs, long sensorAgeMs,
                  String pipRatio, String bg, String fg, int speedFontSize, int gaFontSize,
                  int phanhFontSize, int cuaFontSize, int xocFontSize, int gpsFontSize,
-                 int fontWeight, String[] visible) {
+                 int fontWeight, int statusFontSize, int cupSize,
+                 float lateralG, float longitudinalG, float cupLimit, String drivingStatus, String[] visible) {
             this.active=active; this.calibrated=calibrated;
             this.ga=ga; this.phanh=phanh; this.cua=cua; this.xoc=xoc;
             this.speed=speed; this.accuracy=accuracy; this.hz=hz;
@@ -78,7 +81,10 @@ public final class DriveMonitorService extends Service implements SensorEventLis
             this.speedFontSize=speedFontSize; this.gaFontSize=gaFontSize;
             this.phanhFontSize=phanhFontSize; this.cuaFontSize=cuaFontSize;
             this.xocFontSize=xocFontSize; this.gpsFontSize=gpsFontSize;
-            this.fontWeight=fontWeight; this.visible=visible;
+            this.fontWeight=fontWeight; this.statusFontSize=statusFontSize;
+            this.cupSize=cupSize; this.lateralG=lateralG; this.longitudinalG=longitudinalG;
+            this.cupLimit=cupLimit;
+            this.drivingStatus=drivingStatus; this.visible=visible;
         }
     }
 
@@ -92,6 +98,9 @@ public final class DriveMonitorService extends Service implements SensorEventLis
     private final ArrayDeque<double[]> calibrationWindow = new ArrayDeque<>();
     private double smX, smLon, smVert, vertBaseline, slopeBaselineLon, prevX;
     private int ga, phanh, cua, xoc;
+    private String drivingStatus = "ÊM ÁI";
+    private long statusHoldUntil = 0;
+    private int lastStatusLevel = 0;
     private float speed = Float.NaN, accuracy = Float.NaN, hz = Float.NaN;
     private float previousSpeed = Float.NaN;
     private int lastSign;
@@ -100,8 +109,34 @@ public final class DriveMonitorService extends Service implements SensorEventLis
     private JSONObject configuration = new JSONObject();
     private long emitAt, lastAlert;
     private ToneGenerator alarm;
+    private PowerManager.WakeLock audioWakeLock;
     private NativeOverlayController overlay;
     private final Handler audioHandler = new Handler(Looper.getMainLooper());
+
+    /** Keep the CPU sampling while audio-only is selected, even when the screen sleeps.
+     * Not an auto-restart mechanism; stops with the session or if system restrictions apply.
+     */
+    private void updateAudioWakeLock(){
+        boolean required=sensors!=null && "audio".equals(configuration.optString("floatingMode","pip"))
+                && configuration.optBoolean("soundEnabled",true);
+        if(required){
+            try {
+                if(audioWakeLock==null){
+                    PowerManager manager=(PowerManager)getSystemService(Context.POWER_SERVICE);
+                    if(manager==null)return;
+                    audioWakeLock=manager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,"SmooDri:AudioOnlyMonitoring");
+                    audioWakeLock.setReferenceCounted(false);
+                }
+                if(!audioWakeLock.isHeld())audioWakeLock.acquire();
+            }catch(RuntimeException ignored){}
+        }else releaseAudioWakeLock();
+    }
+    private void releaseAudioWakeLock(){
+        if(audioWakeLock!=null){
+            try{if(audioWakeLock.isHeld())audioWakeLock.release();}catch(RuntimeException ignored){}
+            audioWakeLock=null;
+        }
+    }
 
     @Override public void onCreate() { super.onCreate(); instance=this; overlay=new NativeOverlayController(this); }
 
@@ -124,8 +159,14 @@ public final class DriveMonitorService extends Service implements SensorEventLis
             catch (Exception ignored) { /* use previous defaults */ }
         }
         if(overlay!=null)overlay.configure(configuration);
-        if (ACTION_SETTINGS.equals(action) && sensors != null) { publish(); return START_NOT_STICKY; }
-        if (sensors != null) { publish(); return START_NOT_STICKY; }
+        if (ACTION_SETTINGS.equals(action) && sensors != null) {
+            // Cập nhật âm lượng native khi người dùng sửa SETTING trong phiên đang chạy.
+            audioHandler.removeCallbacksAndMessages(null);
+            if(alarm!=null){alarm.release();alarm=null;}
+            updateAudioWakeLock();
+            publish(); return START_NOT_STICKY;
+        }
+        if (sensors != null) { updateAudioWakeLock();publish(); return START_NOT_STICKY; }
         // For targetSdk 34, a location FGS needs location permission AND location enabled.
         if (!hasLocationPermission() || !locationEnabled()) { shutdown(); return START_NOT_STICKY; }
         createChannel();
@@ -153,6 +194,7 @@ public final class DriveMonitorService extends Service implements SensorEventLis
                     locations.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 0, this, Looper.getMainLooper());
             }
         } catch (SecurityException | IllegalArgumentException ignored) {}
+        updateAudioWakeLock();
         publish();
         return START_NOT_STICKY;
     }
@@ -212,7 +254,7 @@ public final class DriveMonitorService extends Service implements SensorEventLis
     }
     private String[] visible() {
         JSONArray a = configuration.optJSONArray("pipVisible");
-        if (a == null || a.length() == 0) return new String[] {"speed", "ga", "phanh", "cua", "xoc", "gps"};
+        if (a == null) return new String[] {"speed", "status", "cup"};
         String[] result = new String[a.length()];
         for (int i=0; i<a.length(); i++) result[i] = a.optString(i, "");
         return result;
@@ -283,9 +325,30 @@ public final class DriveMonitorService extends Service implements SensorEventLis
                 jerk>setting("maxJerk",0.24)*0.25) { lastReversal=now; reversals.addLast(now); }
         if (sign!=0) lastSign=sign;
         while (!reversals.isEmpty() && now-reversals.peekFirst()>3200) reversals.removeFirst();
+        // Trạng thái ngắn cho PiP/Overlay; giữ vài giây để không nhấp nháy liên tục.
+        // Ưu tiên mức vượt ngưỡng lớn nhất, nếu bằng nhau ưu tiên PHANH.
+        int highest=Math.max(Math.max(ga,phanh),Math.max(cua,xoc));
+        boolean weaving=reversals.size()>=2;
+        int severity=Math.max(highest,weaving?110:0);
+        String eventName="ÊM ÁI";
+        if(weaving && highest<100)eventName="LẮC NGANG LIÊN TỤC";
+        if(highest>=100){
+            if(phanh==highest)eventName="PHANH GẤP";
+            else if(ga==highest)eventName="TĂNG GA MẠNH";
+            else if(cua==highest)eventName="VÀO CUA MẠNH";
+            else eventName="ĐƯỜNG XÓC";
+        }
+        if(severity>=100){
+            // Nếu đã có cảnh báo mạnh hơn đang giữ, không thay bằng cảnh báo nhẹ hơn.
+            if(now>=statusHoldUntil || severity>=lastStatusLevel){
+                drivingStatus=eventName;
+                lastStatusLevel=severity;
+            }
+            statusHoldUntil=now+(long)(Math.max(0,setting("alertHoldTime",3))*1000);
+        }else if(now>=statusHoldUntil){ drivingStatus="ÊM ÁI";lastStatusLevel=0; }
         // Only in background/PiP: web already plays alerts while it is in the foreground.
-        int maxAll=Math.max(Math.max(ga,phanh),Math.max(cua,xoc));
-        if(!MainActivity.uiForeground && configuration.optBoolean("soundEnabled",true) && maxAll>=100 && now-lastAlert>5000) {
+        int maxAll=highest;
+        if(!MainActivity.uiForeground && configuration.optBoolean("soundEnabled",true) && severity>=100 && now-lastAlert>5000) {
             lastAlert=now;
             try {
                 if(alarm==null) alarm=new ToneGenerator(AudioManager.STREAM_NOTIFICATION,
@@ -325,11 +388,15 @@ public final class DriveMonitorService extends Service implements SensorEventLis
         int cuaFont=pipTextSize("pipCuaFontSize",22);
         int xocFont=pipTextSize("pipXocFontSize",22);
         int gpsFont=pipTextSize("pipGpsFontSize",19);
+        int statusFont=pipTextSize("pipStatusFontSize",25);
+        int cupSize=pipTextSize("pipCupSize",130);
+        String status=!calibrated?"ĐANG CÂN CHỈNH":(now-lastSensor>4000?"MẤT CẢM BIẾN":drivingStatus);
         int weight=(int)clamp(setting("pipFontWeight",700),500,800);
         lastSnapshot=new Snapshot(true,calibrated,ga,phanh,cua,xoc,speed,accuracy,hz,
           lastGps==0?Long.MAX_VALUE:now-lastGps, lastSensor==0?Long.MAX_VALUE:now-lastSensor,
           ratio,color("pipBgColor","#0d1a2d"),color("pipTextColor","#ffffff"),
-          speedFont,gaFont,phanhFont,cuaFont,xocFont,gpsFont,weight,visible());
+          speedFont,gaFont,phanhFont,cuaFont,xocFont,gpsFont,weight,statusFont,cupSize,
+          (float)smX,(float)smLon,(float)Math.max(0.05,Math.max(setting("maxGa",0.2),Math.max(setting("maxPhanh",0.224),setting("maxCua",0.2)))),status,visible());
     }
     @Override public void onAccuracyChanged(Sensor sensor, int accuracy) {}
     @Override public void onLocationChanged(Location loc) {
@@ -344,6 +411,7 @@ public final class DriveMonitorService extends Service implements SensorEventLis
     @Override public void onProviderDisabled(String provider) { speed=Float.NaN; publish(); }
     @Override public void onTaskRemoved(Intent rootIntent) { shutdown(); super.onTaskRemoved(rootIntent); }
     private void releaseResources() {
+        releaseAudioWakeLock();
         if(overlay!=null)overlay.hide();
         audioHandler.removeCallbacksAndMessages(null);
         if(alarm!=null){ alarm.release(); alarm=null; }

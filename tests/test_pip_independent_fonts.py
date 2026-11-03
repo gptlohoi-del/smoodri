@@ -1,4 +1,4 @@
-"""Guard six independently adjustable native PiP fonts, and the removal of trip score."""
+"""Guard independent native PiP fonts and complete removal of score UI."""
 from pathlib import Path
 import unittest
 
@@ -37,8 +37,11 @@ class PiPIndependentFonts(unittest.TestCase):
         self.assertNotIn('visible(s,"score")',view)
         self.assertNotIn('s.score',view)
         self.assertNotIn('private double penalty;',service)
-        self.assertIn('ĐIỂM HIỆN TẠI',html)
+        self.assertNotIn('ĐIỂM HIỆN TẠI',html)
+        self.assertNotIn('instantScore',app)
+        self.assertNotIn('scoreRecovery',app)
+        self.assertNotIn('scoreFontSize',app)
     def test_apk_version_bumped(self):
         gradle=(ROOT/'android/app/build.gradle').read_text()
-        self.assertIn('versionCode 6',gradle)
-        self.assertIn("versionName '1.0.5'",gradle)
+        self.assertIn('versionCode 7',gradle)
+        self.assertIn("versionName '1.0.6'",gradle)

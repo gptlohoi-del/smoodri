@@ -167,9 +167,13 @@ public final class MainActivity extends Activity {
             runOnUiThread(()->{
                 try {
                     org.json.JSONObject values=new org.json.JSONObject(config);
-                    floatingMode="overlay".equals(values.optString("floatingMode"))?"overlay":"pip";
+                    String selected=values.optString("floatingMode");
+            floatingMode="overlay".equals(selected)?"overlay":("audio".equals(selected)?"audio":"pip");
                 }catch(Exception ignored){}
-                if(DriveMonitorService.running())sendService(DriveMonitorService.ACTION_SETTINGS,config);
+                if(DriveMonitorService.running()) {
+                    sendService(DriveMonitorService.ACTION_SETTINGS,config);
+                    if(!"overlay".equals(floatingMode))sendService(DriveMonitorService.ACTION_OVERLAY_HIDE,null);
+                }
                 updatePipParams();
             });
         }
@@ -189,7 +193,8 @@ public final class MainActivity extends Activity {
     private void requestStart(String config){
         try{
             org.json.JSONObject values=new org.json.JSONObject(config);
-            floatingMode="overlay".equals(values.optString("floatingMode"))?"overlay":"pip";
+            String selected=values.optString("floatingMode");
+            floatingMode="overlay".equals(selected)?"overlay":("audio".equals(selected)?"audio":"pip");
         }catch(Exception ignored){}
         updatePipParams();
         if(!hasLocationPermission()){
@@ -272,6 +277,16 @@ public final class MainActivity extends Activity {
         }
     }
     private void openFloating() {
+        if("audio".equals(floatingMode)){
+            if(!DriveMonitorService.running()){
+                Toast.makeText(this,"Hãy nhấn BẮT ĐẦU để bật cảnh báo nền.",Toast.LENGTH_SHORT).show();
+                return;
+            }
+            // Không dùng PiP hoặc Overlay: vẫn duy trì Foreground Service và thông báo Android.
+            sendService(DriveMonitorService.ACTION_OVERLAY_HIDE,null);
+            moveTaskToBack(true);
+            return;
+        }
         if("overlay".equals(floatingMode)){
             if(!DriveMonitorService.running()){
                 Toast.makeText(this,"Hãy nhấn BẮT ĐẦU trước khi mở Overlay.",Toast.LENGTH_SHORT).show();
@@ -283,6 +298,7 @@ public final class MainActivity extends Activity {
         }else openPip(true);
     }
     private void openPip(boolean userInitiated){
+        if(!"pip".equals(floatingMode))return;
         if(Build.VERSION.SDK_INT<26){Toast.makeText(this,"Thiết bị không hỗ trợ PiP.",Toast.LENGTH_SHORT).show();return;}
         if(!DriveMonitorService.running()){
             Toast.makeText(this,"Hãy nhấn BẮT ĐẦU trước khi mở PiP.",Toast.LENGTH_SHORT).show();return;
@@ -327,7 +343,7 @@ public final class MainActivity extends Activity {
         if(!DriveMonitorService.running() || openingOverlayPermission)return;
         if("overlay".equals(floatingMode)) {
             if(Settings.canDrawOverlays(this))sendService(DriveMonitorService.ACTION_OVERLAY_SHOW,null);
-        } else if(Build.VERSION.SDK_INT>=26 && Build.VERSION.SDK_INT<31)openPip(false);
+        } else if("pip".equals(floatingMode) && Build.VERSION.SDK_INT>=26 && Build.VERSION.SDK_INT<31)openPip(false);
     }
     @Override public void onPictureInPictureModeChanged(boolean inPip,Configuration c){
         super.onPictureInPictureModeChanged(inPip,c);
