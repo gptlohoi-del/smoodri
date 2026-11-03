@@ -14,7 +14,27 @@ window.SmooDriNative = {
   },
   onMonitorStopped() {
     if (isRunning) stopApp('ĐÃ DỪNG DỊCH VỤ', 'Dịch vụ Android đã ngừng theo dõi');
-  }
+  },
+  onAppResumed() {
+    if (!IS_NATIVE_ANDROID) return;
+    try {
+      if (isRunning && typeof window.SmooDriAndroid.monitoring==='function'
+          && !window.SmooDriAndroid.monitoring()) {
+        stopApp('ĐÃ DỪNG DỊCH VỤ', 'Phiên theo dõi được dừng từ cửa sổ nổi.');
+      }
+      const saved=JSON.parse(window.SmooDriAndroid.overlayGeometry());
+      if (saved.dragRevision>Number(config.overlayDragRevision||0)
+          && saved.width>0 && saved.height>0) {
+        const width=rangeRound('overlayWidth',saved.width);
+        const height=rangeRound('overlayHeight',saved.height);
+        config.overlayWidth=width;config.overlayHeight=height;
+        config.overlayDragRevision=saved.dragRevision;
+        syncFloatingSettings();saveConfig();
+      }
+      updateOverlayPermissionStatus();
+    }catch(error){console.warn('Không đồng bộ được cửa sổ Overlay',error);}
+  },
+  onOverlayPermission(granted) {updateOverlayPermissionStatus(granted);}
 };
 function nativeStart() {
   if (!IS_NATIVE_ANDROID) return Promise.resolve(true);
@@ -60,6 +80,8 @@ const NUMERIC_BASE = Object.freeze({
   pipCuaFontSize:{label:'Cỡ chữ CUA PiP (px)',min:12,max:40,step:1,default:22},
   pipXocFontSize:{label:'Cỡ chữ Ổ GÀ PiP (px)',min:12,max:40,step:1,default:22},
   pipGpsFontSize:{label:'Cỡ chữ GPS PiP (px)',min:12,max:36,step:1,default:19},
+  overlayWidth:{label:'Chiều rộng Overlay (dp)',min:180,max:560,step:1,default:320},
+  overlayHeight:{label:'Chiều cao Overlay (dp)',min:145,max:680,step:1,default:260},
   maxGa:{label:'Ngưỡng GA (G)',min:0.05,max:0.50,step:0.01,default:0.2},
   maxPhanh:{label:'Ngưỡng PHANH (G)',min:0.05,max:0.55,step:0.01,default:0.224},
   maxCua:{label:'Ngưỡng VÀO CUA (G)',min:0.05,max:0.50,step:0.01,default:0.2},
@@ -111,6 +133,7 @@ const RANGE_IDS={
   rngComfort:'comfortLevel',rngVolumeBoost:'volumePercent',rngSpeedSize:'speedFontSize',rngGpsFallback:'gpsFallbackSeconds',
   rngPipSpeedFontSize:'pipSpeedFontSize',rngPipGaFontSize:'pipGaFontSize',rngPipPhanhFontSize:'pipPhanhFontSize',
   rngPipCuaFontSize:'pipCuaFontSize',rngPipXocFontSize:'pipXocFontSize',rngPipGpsFontSize:'pipGpsFontSize',
+  rngOverlayWidth:'overlayWidth',rngOverlayHeight:'overlayHeight',
   rngMaxGa:'maxGa',rngMaxPhanh:'maxPhanh',rngMaxCua:'maxCua',rngPotholeThreshold:'potholeThreshold',rngMaxJerk:'maxJerk',
   rngStartDelay:'startDelay',rngScoreRecovery:'scoreRecovery',rngPeakHoldTime:'peakHoldTime',rngAlertHoldTime:'alertHoldTime'
 };
@@ -138,6 +161,7 @@ const DEFAULTS = {
   peakHoldTime: 1.5, alertHoldTime: 3,
   theme: 'light', chartType: 'bar',
   speedVisible: true, speedFontSize: 64, speedColor: '#009c73', speedWeight: 700, gpsFallbackSeconds: 2,
+  floatingMode:'pip', overlayWidth:320, overlayHeight:260, overlayDragRevision:0,
   pipRatio: '16:9', pipFontWeight: 700,
   pipBgColor: '#0d1a2d', pipTextColor: '#ffffff', pipVisible: [...PIP_DEFAULT_VISIBLE],
   scoreFontSize:32,scoreColor:'#059669',cupSize:176,cupAlign:'left',speedAlign:'left',barHeight:38,barFontSize:12.5,
@@ -191,6 +215,21 @@ function loadConfig() {
   cfg.speedWeight = [500,600,700,800].includes(Number(raw.speedWeight)) ? Number(raw.speedWeight) : 700;
   cfg.speedColor = /^#[0-9a-fA-F]{6}$/.test(raw.speedColor) ? raw.speedColor : '#009c73';
   cfg.gpsFallbackSeconds = rangeRound('gpsFallbackSeconds',finite(raw.gpsFallbackSeconds,cfg.gpsFallbackSeconds));
+  cfg.floatingMode = raw.floatingMode === 'overlay' ? 'overlay' : 'pip';
+  cfg.overlayDragRevision=Math.max(0,finite(raw.overlayDragRevision,0));
+  cfg.overlayWidth=rangeRound('overlayWidth',finite(raw.overlayWidth,cfg.overlayWidth));
+  cfg.overlayHeight=rangeRound('overlayHeight',finite(raw.overlayHeight,cfg.overlayHeight));
+  // A dragged native Overlay remembers its latest width/height, even after WebView resumes.
+  if(IS_NATIVE_ANDROID && typeof window.SmooDriAndroid.overlayGeometry==='function') {
+    try {
+      const geometry=JSON.parse(window.SmooDriAndroid.overlayGeometry());
+      if(geometry.dragRevision>cfg.overlayDragRevision && geometry.width>0 && geometry.height>0) {
+        cfg.overlayWidth=rangeRound('overlayWidth',geometry.width);
+        cfg.overlayHeight=rangeRound('overlayHeight',geometry.height);
+        cfg.overlayDragRevision=geometry.dragRevision;
+      }
+    }catch(_){}
+  }
   cfg.pipRatio = ['16:9','4:3','1:1'].includes(raw.pipRatio) ? raw.pipRatio : DEFAULTS.pipRatio;
   // Chuyển cài đặt cũ sang cỡ chữ tốc độ mới (đồng thời bỏ điểm chuyến đi PiP).
   // Giá trị cũ 23 px đã bị thu nhỏ đáng kể trong Canvas, do đó không dùng thẳng cho mục mới.
@@ -433,8 +472,51 @@ function bindNumericSlider(id, labelId, cfgKey, suffix, decimals, custom = false
   });
 }
 
-/* PiP settings: App Hub reads the saved config via its injected same-origin bridge. */
+/* PiP and Overlay share all native font, color and metric-visibility settings. */
+function updateOverlayPermissionStatus(known) {
+  const label=$('overlayPermissionStatus');
+  if(!label)return;
+  if(!IS_NATIVE_ANDROID){label.textContent='Overlay chỉ chạy trong APK Android.';return;}
+  let granted=known;
+  try {if(typeof granted!=='boolean')granted=window.SmooDriAndroid.canOverlay();}catch(_){granted=false;}
+  label.textContent=granted?'Đã cấp quyền Hiển thị trên ứng dụng khác.':'Chưa cấp quyền Overlay. Hãy nhấn CẤP QUYỀN bên dưới.';
+}
+function syncFloatingSettings() {
+  $('selFloatingMode').value=config.floatingMode;
+  const isOverlay=config.floatingMode==='overlay';
+  $('overlaySizeOptions').hidden=!isOverlay;
+  $('overlayPermissionBox').hidden=!isOverlay;
+  $('rngOverlayWidth').value=String(config.overlayWidth);
+  $('rngOverlayHeight').value=String(config.overlayHeight);
+  $('lblOverlayWidth').textContent=config.overlayWidth+'dp';
+  $('lblOverlayHeight').textContent=config.overlayHeight+'dp';
+  const button=$('btnNativePip');
+  if(button) {
+    button.textContent=isOverlay?'▣ Overlay':'▣ PiP';
+    button.title=isOverlay?'Mở cửa sổ nổi Overlay trên Android':'Mở cửa sổ PiP trên Android';
+  }
+  updateOverlayPermissionStatus();
+}
+function bindFloatingSettings() {
+  $('selFloatingMode').addEventListener('change',event=>{
+    config.floatingMode=event.target.value==='overlay'?'overlay':'pip';
+    syncFloatingSettings();saveConfig();
+  });
+  for(const [key,id,label] of [['overlayWidth','rngOverlayWidth','lblOverlayWidth'],['overlayHeight','rngOverlayHeight','lblOverlayHeight']]){
+    $(id).addEventListener('input',event=>{
+      config[key]=rangeRound(key,event.target.value);
+      $(label).textContent=config[key]+'dp';
+      saveConfig();
+    });
+  }
+  $('btnOverlayPermission').addEventListener('click',()=>{
+    if(!IS_NATIVE_ANDROID)return;
+    try {window.SmooDriAndroid.requestOverlayPermission();}
+    catch(_){$('overlayPermissionStatus').textContent='Không mở được trang cấp quyền trên thiết bị này.';}
+  });
+}
 function syncPipSettings() {
+  syncFloatingSettings();
   $('selPipRatio').value = config.pipRatio;
   for(const key of PIP_FONT_KEYS){
     const id='rng'+key.slice(0,1).toUpperCase()+key.slice(1);
@@ -866,8 +948,8 @@ if (IS_NATIVE_ANDROID) {
         setBanner('CHƯA THEO DÕI', 'Hãy nhấn BẮT ĐẦU trước khi mở PiP.');
         return;
       }
-      try { window.SmooDriAndroid.enterPip(); }
-      catch (_) { setBanner('KHÔNG MỞ ĐƯỢC PiP', 'Hãy kiểm tra quyền Hình trong hình của SmooDri.'); }
+      try { window.SmooDriAndroid.openFloating(); }
+      catch (_) { setBanner('KHÔNG MỞ ĐƯỢC CỬA SỔ NỔI', 'Hãy kiểm tra quyền PiP hoặc Overlay trong Android.'); }
     });
   }
 }
@@ -1175,6 +1257,7 @@ initHelp();
 
 bindSliders();
 bindPipSettings();
+bindFloatingSettings();
 syncAllSettings();
 updateAllRangeLimits();
 applyUiAppearance();

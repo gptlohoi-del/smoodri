@@ -16,6 +16,10 @@ import java.util.Locale;
 public final class NativePipView extends View {
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private int selectedWeight = 700;
+    private boolean overlayMode = false;
+
+    /** In Overlay the logical canvas follows the user-selected window aspect. */
+    public void setOverlayMode(boolean enabled) { overlayMode = enabled; invalidate(); }
 
     public NativePipView(Context context) {
         super(context);
@@ -71,7 +75,9 @@ public final class NativePipView extends View {
 
         // Fixed logical canvas keeps placement consistent across Android PiP sizes.
         float logicalWidth = 480f;
-        float logicalHeight = "1:1".equals(s.pipRatio) ? 480f : ("4:3".equals(s.pipRatio) ? 360f : 270f);
+        float logicalHeight = overlayMode
+                ? Math.max(270f, Math.min(640f, 480f * height / width))
+                : ("1:1".equals(s.pipRatio) ? 480f : ("4:3".equals(s.pipRatio) ? 360f : 270f));
         float scale = Math.min(width / logicalWidth, height / logicalHeight);
         canvas.save();
         canvas.translate((width - logicalWidth * scale) / 2f, (height - logicalHeight * scale) / 2f);

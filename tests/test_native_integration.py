@@ -16,7 +16,7 @@ class NativeIntegrationTests(unittest.TestCase):
         html=(ROOT/'index.html').read_text()
         for name in ('SmooDriAndroid','enterPip','ACTION_START','onNativeSample','DriveMonitorService'):
             self.assertIn(name,activity)
-        for name in ('SmooDriAndroid.start','SmooDriAndroid.stop','SmooDriAndroid.updateConfig','SmooDriAndroid.enterPip','onNativeSample(sample)'):
+        for name in ('SmooDriAndroid.start','SmooDriAndroid.stop','SmooDriAndroid.updateConfig','SmooDriAndroid.openFloating','onNativeSample(sample)'):
             self.assertIn(name,js)
         self.assertIn('id="btnNativePip"',html)
         self.assertIn('src="./ota.js"',html)

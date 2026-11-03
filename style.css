@@ -899,3 +899,8 @@ body.ui-editing #btnStart,body.ui-editing #btnQuickCalib,body.ui-editing #btnSet
   white-space:nowrap; flex-shrink:0; }
 .btn-native-pip.hidden {display:none !important;}
 @media (max-width:360px) { .btn-native-pip {font-size:11px;padding:6px 7px;} }
+
+/* Chế độ Overlay: khu vực cấp quyền chỉ xuất hiện khi người dùng chọn Overlay. */
+#overlaySizeOptions[hidden],#overlayPermissionBox[hidden]{display:none!important}
+.overlay-size-options,.overlay-permission-box{border:1px solid var(--border, #bac6cf);border-radius:10px;padding:10px;margin:10px 0;background:rgba(90,135,166,.06)}
+.setting-small-action{border:1px solid #508eb9;border-radius:9px;background:#1e5073;color:white;font-weight:700;padding:10px 12px;min-height:44px;max-width:100%;white-space:normal}

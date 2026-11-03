@@ -25,7 +25,7 @@
         <button id="btnQuickCalib" class="btn-icon" title="Đặt lại tâm 0G ngay lập tức">
           🎯 Đặt lại 0G
         </button>
-        <button id="btnNativePip" class="btn-native-pip hidden" type="button" title="Mở cửa sổ PiP trên Android">▣ PiP</button>
+        <button id="btnNativePip" class="btn-native-pip hidden" type="button" title="Mở cửa sổ nổi trên Android">▣ PiP</button>
         <button id="btnSettings" class="btn-icon" title="Mở cài đặt">
           ⚙️
         </button>
@@ -275,13 +275,29 @@
         </div>
       </div>
 
-      <div class="section-divider">6. Cửa sổ PiP trên Android / App Hub</div>
+      <div class="section-divider">6. Cửa sổ nổi PiP / Overlay trên Android</div>
       <div class="setting-group">
-        <div class="setting-hint">Chỉnh giao diện PiP native của APK SmooDri (hoặc App Hub nếu có hỗ trợ). Cần nhấn BẮT ĐẦU rồi nhấn nút PiP hoặc Home. Kích thước PiP do Android quyết định: trên Android 12 trở lên có thể thử chụm/xòe hai ngón để thu phóng hoặc chạm hai lần để chuyển kích thước. Ứng dụng chỉ chọn tỷ lệ khung; trên web/PWA không có PiP native.</div>
-        <div class="setting-label"><label for="selPipRatio">Tỷ lệ cửa sổ</label>
+        <div class="setting-hint">Chọn <strong>PiP chuẩn Android</strong> hoặc <strong>Overlay tự chỉnh kích thước</strong>. Cả hai dùng chung cỡ chữ, màu và 6 thông số đang hiển thị. Chỉ một chế độ hoạt động mỗi lần; cả hai chỉ có trong APK Android.</div>
+        <div class="setting-label"><label for="selFloatingMode">Kiểu cửa sổ khi ra màn hình ngoài</label>
+          <select id="selFloatingMode"><option value="pip">PiP — Android quản lý kích thước</option><option value="overlay">Overlay — tự kéo và thay đổi kích thước</option></select>
+        </div>
+        <div id="overlaySizeOptions" class="overlay-size-options" hidden>
+          <div class="setting-label"><label for="rngOverlayWidth">Chiều rộng Overlay</label><strong id="lblOverlayWidth">320dp</strong></div>
+          <input id="rngOverlayWidth" type="range" />
+          <div class="setting-label"><label for="rngOverlayHeight">Chiều cao Overlay</label><strong id="lblOverlayHeight">260dp</strong></div>
+          <input id="rngOverlayHeight" type="range" />
+          <div class="setting-hint">Overlay có tay nắm ≡ để kéo vị trí và góc ◢ để thay đổi chiều rộng/cao khi đang nổi. Đơn vị dp (điểm ảnh độc lập mật độ) giúp cửa sổ có kích thước dễ đọc trên nhiều điện thoại. Kích thước thực tế bị giới hạn bởi màn hình.</div>
+        </div>
+        <div id="overlayPermissionBox" class="overlay-permission-box" hidden>
+          <div id="overlayPermissionStatus" class="setting-hint" aria-live="polite">Kiểm tra quyền Overlay…</div>
+          <button id="btnOverlayPermission" type="button" class="setting-small-action">CẤP QUYỀN HIỂN THỊ TRÊN ỨNG DỤNG KHÁC</button>
+          <div class="setting-hint">Chỉ cấp nếu bạn muốn sử dụng Overlay. Nếu quản trị viên điện thoại không cho phép, hãy chuyển về PiP.</div>
+        </div>
+        <div class="setting-hint">Ở chế độ PiP, chọn tỷ lệ khung bên dưới và dùng thao tác phóng to của Android nếu được hỗ trợ. Ở chế độ Overlay, chọn kích thước hoặc kéo trực tiếp cửa sổ nổi.</div>
+        <div class="setting-label"><label for="selPipRatio">Tỷ lệ cửa sổ PiP chuẩn</label>
           <select id="selPipRatio"><option value="16:9">16:9 — Ngang</option><option value="4:3">4:3 — Cân đối</option><option value="1:1">1:1 — Vuông</option></select>
         </div>
-        <div class="setting-hint">Cỡ chữ PiP được chỉnh <strong>độc lập cho từng thông số</strong>. Android chỉ quyết định kích thước cửa sổ; cỡ chữ dưới đây điều khiển chữ do PiP native vẽ.</div>
+        <div class="setting-hint">Cỡ chữ của <strong>PiP và Overlay dùng chung 6 thông số độc lập</strong>. Kéo thanh hoặc nhấn +/− để thay đổi; kích thước chữ thực tế còn phụ thuộc độ thu nhỏ của cửa sổ.</div>
         <div class="setting-label"><label for="rngPipSpeedFontSize">Cỡ chữ TỐC ĐỘ trong PiP</label><strong id="lblPipSpeedFontSize">44px</strong></div>
         <input id="rngPipSpeedFontSize" type="range" />
         <div class="setting-label"><label for="rngPipGaFontSize">Cỡ chữ GA trong PiP</label><strong id="lblPipGaFontSize">22px</strong></div>
@@ -299,7 +315,7 @@
         </div>
         <div class="setting-label"><label for="inpPipBg">Màu nền PiP</label><input id="inpPipBg" type="color" value="#0d1a2d" /></div>
         <div class="setting-label"><label for="inpPipText">Màu chữ PiP</label><input id="inpPipText" type="color" value="#ffffff" /></div>
-        <div class="setting-label"><span>Thông tin xuất hiện trong PiP</span></div>
+        <div class="setting-label"><span>Thông tin xuất hiện trong PiP / Overlay</span></div>
         <div class="metric-choices" id="pipMetricChoices">
           <label><input type="checkbox" data-pip-visible="speed" checked /> Tốc độ GPS (native)</label>
           <label><input type="checkbox" data-pip-visible="ga" checked /> GA</label>
@@ -316,7 +332,7 @@
           </div>
           <div class="pip-preview-gps" data-preview="gps">GPS ±5m · 1.0Hz</div>
         </div>
-        <div class="setting-hint">Tốc độ trong PiP chỉ có số mới khi WebView tiếp tục nhận GPS. Nếu dữ liệu quá cũ sẽ hiện “--”, không giữ tốc độ cũ gây nhầm lẫn.</div>
+        <div class="setting-hint">Tốc độ và GPS trong PiP/Overlay được lấy từ Foreground Service native. Nếu GPS quá cũ, tốc độ sẽ hiện “--” thay vì giữ tốc độ cũ.</div>
       </div>
 
       <details id="advancedSettings" class="advanced-settings">
@@ -422,7 +438,7 @@
         <h4>2. Cài đặt chung</h4><p>Nhấn ⚙️ để mở popup CÀI ĐẶT CHUNG. Mỗi thông số số có nút −, thanh trượt ngắn và nút +. Chạm nhẹ hoặc vuốt dọc trên thanh sẽ không làm nhảy giá trị; kéo ngang có chủ ý để chỉnh. Thay đổi được lưu tự động. Nhấn ĐÓNG hoặc chạm ngoài popup để thoát.</p>
         <h4>3. Chỉnh giao diện trực tiếp</h4><p>Khi đã DỪNG theo dõi, mở CÀI ĐẶT CHUNG và nhấn CHỈNH GIAO DIỆN TRỰC TIẾP. Chạm vào điểm, tốc độ, cốc G hoặc thanh chỉ số. Thanh điều khiển nhỏ xuất hiện ở phía đối diện, để bạn nhìn rõ phần đang chỉnh. Chạm XONG để trở lại giao diện bình thường.</p>
         <h4>4. Giới hạn MIN/MAX/STEP/DEFAULT</h4><p>Trong CÀI ĐẶT CHUNG, mở mục GIỚI HẠN THÔNG SỐ. Chọn một thông số và nhập các giá trị mới. Không có giới hạn MIN/MAX ẩn, nhưng MIN phải nhỏ hơn MAX, STEP phải dương và DEFAULT nằm trong khoảng MIN–MAX. Giá trị bất hợp lý có thể làm méo bố cục hoặc giảm độ tin cậy của chỉ số. Nút Mặc định khôi phục cấu hình gốc mà không xóa dữ liệu.</p>
-        <h4>5. PiP và cập nhật</h4><p>Từ CÀI ĐẶT CHUNG có thể chỉnh cỡ chữ riêng của TỐC ĐỘ, GA, PHANH, CUA, Ổ GÀ, GPS trong PiP. PiP không có điểm chuyến đi. Khi chạy trong APK SmooDri có hỗ trợ native, các cài đặt PiP được gửi đến dịch vụ theo dõi Android. Trên web/PWA chỉ hiển thị bản xem trước. Trên Android 12 trở lên, có thể thử dùng hai ngón để thay đổi kích thước PiP; không thể nhập chiều rộng/cao tùy ý trong ứng dụng. Chữ quá lớn có thể tự co lại để vừa cửa sổ. Những thay đổi HTML/CSS/JS có thể nhận qua OTA web khi bản APK hỗ trợ.</p>
+        <h4>5. PiP hoặc Overlay</h4><p>Vào CÀI ĐẶT CHUNG → Cửa sổ nổi và chọn PiP hoặc Overlay. PiP chuẩn do Android quản lý kích thước. Overlay có thể tự chỉnh chiều rộng/cao bằng dp, kéo cửa sổ bằng ≡ hoặc kéo góc ◢ để phóng to thu nhỏ. Overlay cần cấp quyền Hiển thị trên ứng dụng khác; nếu thiết bị quản lý không cho cấp quyền, hãy dùng PiP. Cả hai có cỡ chữ riêng cho TỐC ĐỘ, GA, PHANH, CUA, Ổ GÀ và GPS, cùng màu sắc và mục hiển thị. Nhấn MỞ trong Overlay để về ứng dụng, nhấn × để dừng theo dõi và đóng Overlay. Chỉ thay một chế độ mỗi lần. Nếu chữ quá dài có thể tự co để vừa cửa sổ. Không thao tác khi đang lái.</p>
         <h4>6. Cập nhật OTA</h4><p>Ứng dụng tự kiểm tra khi mở có Internet. Khi có phiên bản web mới, chương trình tải vào bộ nhớ đệm và tự kích hoạt khi chưa theo dõi chuyến đi. Nếu đang đo, bản mới sẽ được áp dụng khi dừng hoặc mở ứng dụng lần sau. Các chức năng Android gốc như quyền, Foreground Service, PiP native, icon APK vẫn cần APK mới. Có thể nhấn KIỂM TRA CẬP NHẬT trong CÀI ĐẶT CHUNG để kiểm tra thủ công.</p>
         <h4>6. Lưu ý an toàn</h4><p>Chỉ thao tác cài đặt khi xe đã đỗ ở nơi an toàn. Nếu giao diện quá chật, giảm cỡ chữ hoặc chiều cao thanh để bảo đảm One View.</p>
       </div>

@@ -34,6 +34,8 @@ public final class DriveMonitorService extends Service implements SensorEventLis
     public static final String ACTION_START = "org.smoodri.app.START";
     public static final String ACTION_STOP = "org.smoodri.app.STOP";
     public static final String ACTION_SETTINGS = "org.smoodri.app.SETTINGS";
+    public static final String ACTION_OVERLAY_SHOW = "org.smoodri.app.OVERLAY_SHOW";
+    public static final String ACTION_OVERLAY_HIDE = "org.smoodri.app.OVERLAY_HIDE";
     public static final String EXTRA_SETTINGS = "settings";
     private static final String CHANNEL_ID = "smoodri_monitor_v1";
     private static final int NOTIFICATION_ID = 2026;
@@ -98,18 +100,30 @@ public final class DriveMonitorService extends Service implements SensorEventLis
     private JSONObject configuration = new JSONObject();
     private long emitAt, lastAlert;
     private ToneGenerator alarm;
+    private NativeOverlayController overlay;
     private final Handler audioHandler = new Handler(Looper.getMainLooper());
 
-    @Override public void onCreate() { super.onCreate(); instance=this; }
+    @Override public void onCreate() { super.onCreate(); instance=this; overlay=new NativeOverlayController(this); }
+
+    void stopFromOverlay(){ shutdown(); }
     @Override public IBinder onBind(Intent intent) { return null; }
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
         String action = intent == null ? "" : intent.getAction();
         if (ACTION_STOP.equals(action)) { shutdown(); return START_NOT_STICKY; }
+        if (ACTION_OVERLAY_HIDE.equals(action)) {
+            if(overlay!=null)overlay.hide();
+            return START_NOT_STICKY;
+        }
+        if (ACTION_OVERLAY_SHOW.equals(action)) {
+            if(sensors!=null && overlay!=null)overlay.show();
+            return START_NOT_STICKY;
+        }
         if (intent != null && intent.hasExtra(EXTRA_SETTINGS)) {
             try { configuration = new JSONObject(intent.getStringExtra(EXTRA_SETTINGS)); }
             catch (Exception ignored) { /* use previous defaults */ }
         }
+        if(overlay!=null)overlay.configure(configuration);
         if (ACTION_SETTINGS.equals(action) && sensors != null) { publish(); return START_NOT_STICKY; }
         if (sensors != null) { publish(); return START_NOT_STICKY; }
         // For targetSdk 34, a location FGS needs location permission AND location enabled.
@@ -330,6 +344,7 @@ public final class DriveMonitorService extends Service implements SensorEventLis
     @Override public void onProviderDisabled(String provider) { speed=Float.NaN; publish(); }
     @Override public void onTaskRemoved(Intent rootIntent) { shutdown(); super.onTaskRemoved(rootIntent); }
     private void releaseResources() {
+        if(overlay!=null)overlay.hide();
         audioHandler.removeCallbacksAndMessages(null);
         if(alarm!=null){ alarm.release(); alarm=null; }
         if(sensors!=null){ sensors.unregisterListener(this); sensors=null; }

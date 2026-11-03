@@ -1,4 +1,6 @@
-# HƯỚNG DẪN SMOODRI — PiP + FOREGROUND SERVICE + OTA
+# HƯỚNG DẪN SMOODRI — PiP / Overlay + FOREGROUND SERVICE + OTA
+
+**Từ v1.0.5:** Có hai chế độ cửa sổ nổi chọn trong SETTING. Xem `HUONG_DAN_PIP_OVERLAY.md` để cấp quyền Overlay và chỉnh kích thước. Các bước PiP phía dưới vẫn áp dụng khi chọn chế độ PiP.
 
 ## 1. Đưa repo lên GitHub
 
